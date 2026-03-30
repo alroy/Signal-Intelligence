@@ -1,10 +1,10 @@
 import type { Match } from "@/types/database";
 import { FeedbackButtons } from "./feedback-buttons";
 
-const sourceIcons: Record<string, string> = {
-  slack: "💬",
-  salesforce: "☁️",
-  gong: "🎙️",
+const sourceLabels: Record<string, string> = {
+  slack: "Slack",
+  salesforce: "Salesforce",
+  gong: "Gong",
 };
 
 const categoryColors: Record<string, string> = {
@@ -25,8 +25,8 @@ export function MatchItem({ match }: { match: Match }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
-            <span title={match.source}>
-              {sourceIcons[match.source] || "📄"}
+            <span className="font-medium text-gray-400">
+              {sourceLabels[match.source] || match.source}
             </span>
             {match.account && (
               <span className="font-medium text-gray-900">
