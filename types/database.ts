@@ -38,6 +38,15 @@ export interface Match {
   created_at: string;
 }
 
+export interface Cluster {
+  id: string;
+  pm_id: string;
+  account: string | null;
+  situation_summary: string;
+  combined_urgency: string;
+  created_at: string;
+}
+
 export interface PmFeedback {
   id: string;
   pm_id: string;
