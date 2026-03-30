@@ -71,17 +71,7 @@ export default async function DashboardPage() {
             No active objectives
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            Objectives are created via the Cowork plugin using the{" "}
-            <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
-              /pm-signal-intelligence:create-objective
-            </code>{" "}
-            command.
-          </p>
-          <p className="mt-4 text-xs text-gray-400">
-            Your Supabase UUID for Cowork config:{" "}
-            <code className="rounded bg-gray-100 px-1 py-0.5">
-              {user!.id}
-            </code>
+            Your objectives will appear here once they&apos;re created.
           </p>
         </div>
       )}
