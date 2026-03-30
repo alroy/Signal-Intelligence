@@ -26,6 +26,14 @@ export function MatchFilters() {
     [router, pathname, searchParams]
   );
 
+  const hasActiveFilters = ["category", "urgency", "feedback", "source"].some(
+    (key) => searchParams.get(key) && searchParams.get(key) !== "all"
+  );
+
+  const clearAll = useCallback(() => {
+    router.push(pathname);
+  }, [router, pathname]);
+
   return (
     <div className="flex flex-wrap items-center gap-4">
       <FilterSelect
@@ -52,6 +60,14 @@ export function MatchFilters() {
         value={searchParams.get("source") || "all"}
         onChange={(v) => updateFilter("source", v)}
       />
+      {hasActiveFilters && (
+        <button
+          onClick={clearAll}
+          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+        >
+          Clear filters
+        </button>
+      )}
     </div>
   );
 }
