@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   const { data: objectives } = await supabase
     .from("objectives")
-    .select("*, matches(id, urgency, feedback)")
+    .select("*, matches(id, urgency, feedback, created_at)")
     .eq("pm_id", user!.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });
@@ -25,6 +25,7 @@ export default async function DashboardPage() {
       id: string;
       urgency: string;
       feedback: string;
+      created_at: string;
     }>;
     const pendingMatches = matches.filter((m) => m.feedback === "pending");
     const urgencyOrder = ["act_now", "this_week", "background"];
@@ -36,10 +37,20 @@ export default async function DashboardPage() {
               urgencyOrder.indexOf(b.urgency)
           )[0].urgency
         : null;
+    const latestMatchAt =
+      matches.length > 0
+        ? matches.sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime()
+          )[0].created_at
+        : null;
     return {
       objective: { ...obj, matches: undefined },
       unreadCount: pendingMatches.length,
       highestUrgency,
+      latestMatchAt,
+      totalMatches: matches.length,
     };
   });
 
@@ -55,12 +66,14 @@ export default async function DashboardPage() {
       {objectivesWithCounts.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {objectivesWithCounts.map(
-            ({ objective, unreadCount, highestUrgency }) => (
+            ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
               <ObjectiveCard
                 key={objective.id}
                 objective={objective}
                 unreadCount={unreadCount}
                 highestUrgency={highestUrgency}
+                latestMatchAt={latestMatchAt}
+                totalMatches={totalMatches}
               />
             )
           )}
@@ -76,13 +89,6 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {objectivesWithCounts.length > 0 &&
-        objectivesWithCounts.length < 3 && (
-          <p className="text-sm text-gray-500">
-            Tip: The PRD recommends 3-5 active objectives. Create more via the
-            Cowork plugin.
-          </p>
-        )}
     </div>
   );
 }
