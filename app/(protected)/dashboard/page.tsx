@@ -71,7 +71,7 @@ export default async function DashboardPage() {
             No active objectives
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            Your objectives will appear here once they&apos;re created.
+            Your objectives will appear here once created.
           </p>
         </div>
       )}
