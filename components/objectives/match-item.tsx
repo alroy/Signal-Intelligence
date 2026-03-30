@@ -55,9 +55,6 @@ export function MatchItem({ match }: { match: Match }) {
             >
               {match.urgency.replace("_", " ")}
             </span>
-            <span className="text-xs text-gray-400">
-              Score: {match.relevance_score}
-            </span>
           </div>
         </div>
         <div className="shrink-0">

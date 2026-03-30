@@ -93,14 +93,6 @@ export function ObjectiveSidebar({
         </div>
       )}
 
-      {Object.keys(objective.decomposition).length > 0 && (
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Decomposition</h3>
-          <pre className="mt-2 max-h-60 overflow-auto rounded-md bg-gray-50 p-3 text-xs text-gray-700">
-            {JSON.stringify(objective.decomposition, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }
