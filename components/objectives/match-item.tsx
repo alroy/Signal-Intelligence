@@ -1,10 +1,12 @@
 import type { Match } from "@/types/database";
 import { FeedbackButtons } from "./feedback-buttons";
 
-const sourceLabels: Record<string, string> = {
-  slack: "Slack",
-  salesforce: "Salesforce",
-  gong: "Gong",
+const sourceLogos: Record<string, { src: string; alt: string }> = {
+  slack: { src: "/slack.svg", alt: "Slack" },
+  salesforce: { src: "/salesforce.svg", alt: "Salesforce" },
+  gong: { src: "/Gong.svg", alt: "Gong" },
+  gmail: { src: "/gmail.svg", alt: "Gmail" },
+  monday: { src: "/monday.svg", alt: "Monday" },
 };
 
 const categoryColors: Record<string, string> = {
@@ -25,9 +27,17 @@ export function MatchItem({ match }: { match: Match }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-gray-400">
-              {sourceLabels[match.source] || match.source}
-            </span>
+            {sourceLogos[match.source] ? (
+              <img
+                src={sourceLogos[match.source].src}
+                alt={sourceLogos[match.source].alt}
+                className="h-4 w-4 shrink-0"
+              />
+            ) : (
+              <span className="text-xs font-medium text-gray-400">
+                {match.source}
+              </span>
+            )}
             {match.account && (
               <span className="font-medium text-gray-900">
                 {match.account}
