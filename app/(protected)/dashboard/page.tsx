@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { PmProfile } from "@/types/database";
+import { ObjectiveCard } from "@/components/dashboard/objective-card";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -9,9 +9,39 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("pm_profiles")
-    .select("*")
+    .select("name, email")
     .eq("id", user!.id)
-    .single<PmProfile>();
+    .single();
+
+  const { data: objectives } = await supabase
+    .from("objectives")
+    .select("*, matches(id, urgency, feedback)")
+    .eq("pm_id", user!.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  const objectivesWithCounts = (objectives || []).map((obj) => {
+    const matches = (obj.matches || []) as Array<{
+      id: string;
+      urgency: string;
+      feedback: string;
+    }>;
+    const pendingMatches = matches.filter((m) => m.feedback === "pending");
+    const urgencyOrder = ["act_now", "this_week", "background"];
+    const highestUrgency =
+      pendingMatches.length > 0
+        ? pendingMatches.sort(
+            (a, b) =>
+              urgencyOrder.indexOf(a.urgency) -
+              urgencyOrder.indexOf(b.urgency)
+          )[0].urgency
+        : null;
+    return {
+      objective: { ...obj, matches: undefined },
+      unreadCount: pendingMatches.length,
+      highestUrgency,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -21,13 +51,48 @@ export default async function DashboardPage() {
           Welcome back, {profile?.name || profile?.email}
         </p>
       </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-lg font-medium">Active Objectives</h3>
-        <p className="mt-2 text-gray-500">
-          No objectives yet. Objectives created via the Cowork plugin will
-          appear here.
-        </p>
-      </div>
+
+      {objectivesWithCounts.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {objectivesWithCounts.map(
+            ({ objective, unreadCount, highestUrgency }) => (
+              <ObjectiveCard
+                key={objective.id}
+                objective={objective}
+                unreadCount={unreadCount}
+                highestUrgency={highestUrgency}
+              />
+            )
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <h3 className="text-lg font-medium text-gray-900">
+            No active objectives
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Objectives are created via the Cowork plugin using the{" "}
+            <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
+              /pm-signal-intelligence:create-objective
+            </code>{" "}
+            command.
+          </p>
+          <p className="mt-4 text-xs text-gray-400">
+            Your Supabase UUID for Cowork config:{" "}
+            <code className="rounded bg-gray-100 px-1 py-0.5">
+              {user!.id}
+            </code>
+          </p>
+        </div>
+      )}
+
+      {objectivesWithCounts.length > 0 &&
+        objectivesWithCounts.length < 3 && (
+          <p className="text-sm text-gray-500">
+            Tip: The PRD recommends 3-5 active objectives. Create more via the
+            Cowork plugin.
+          </p>
+        )}
     </div>
   );
 }
