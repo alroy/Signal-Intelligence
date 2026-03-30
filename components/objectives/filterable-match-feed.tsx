@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Match } from "@/types/database";
+import type { MatchWithCluster } from "@/types/database";
 import { MatchItem } from "./match-item";
 
 const filterDefs = [
@@ -29,7 +29,19 @@ const filterDefs = [
 
 type FilterKey = "category" | "urgency" | "feedback" | "source";
 
-export function FilterableMatchFeed({ matches }: { matches: Match[] }) {
+const urgencyOrder: Record<string, number> = {
+  act_now: 0,
+  this_week: 1,
+  background: 2,
+};
+
+const urgencyColors: Record<string, string> = {
+  act_now: "bg-red-100 text-red-800",
+  this_week: "bg-yellow-100 text-yellow-800",
+  background: "bg-green-100 text-green-800",
+};
+
+export function FilterableMatchFeed({ matches }: { matches: MatchWithCluster[] }) {
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     category: "all",
     urgency: "all",
@@ -50,6 +62,36 @@ export function FilterableMatchFeed({ matches }: { matches: Match[] }) {
       return false;
     return true;
   });
+
+  // Group filtered matches by cluster
+  const clusterGroups = new Map<
+    string,
+    { cluster: NonNullable<MatchWithCluster["cluster"]>; matches: MatchWithCluster[] }
+  >();
+  const unclustered: MatchWithCluster[] = [];
+
+  for (const match of filtered) {
+    if (match.cluster) {
+      const existing = clusterGroups.get(match.cluster.id);
+      if (existing) {
+        existing.matches.push(match);
+      } else {
+        clusterGroups.set(match.cluster.id, {
+          cluster: match.cluster,
+          matches: [match],
+        });
+      }
+    } else {
+      unclustered.push(match);
+    }
+  }
+
+  // Sort cluster groups by urgency (act_now first)
+  const sortedGroups = [...clusterGroups.values()].sort(
+    (a, b) =>
+      (urgencyOrder[a.cluster.combined_urgency] ?? 2) -
+      (urgencyOrder[b.cluster.combined_urgency] ?? 2)
+  );
 
   return (
     <div className="space-y-4">
@@ -92,8 +134,38 @@ export function FilterableMatchFeed({ matches }: { matches: Match[] }) {
       </div>
 
       {filtered.length > 0 ? (
-        <div className="space-y-3">
-          {filtered.map((match) => (
+        <div className="space-y-4">
+          {sortedGroups.map(({ cluster, matches: groupMatches }) => (
+            <div
+              key={cluster.id}
+              className="border-l-2 border-purple-300 pl-3 space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-purple-900">
+                  {cluster.situation_summary}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${urgencyColors[cluster.combined_urgency] || ""}`}
+                >
+                  {cluster.combined_urgency.replace("_", " ")}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {groupMatches.length} signals
+                </span>
+              </div>
+              {groupMatches.map((match) => (
+                <MatchItem key={match.id} match={match} />
+              ))}
+            </div>
+          ))}
+          {unclustered.length > 0 && sortedGroups.length > 0 && (
+            <div className="pt-2">
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Unclustered signals
+              </span>
+            </div>
+          )}
+          {unclustered.map((match) => (
             <MatchItem key={match.id} match={match} />
           ))}
         </div>

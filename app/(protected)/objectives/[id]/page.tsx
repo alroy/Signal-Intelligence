@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Match } from "@/types/database";
+import type { MatchWithCluster } from "@/types/database";
 import { FilterableMatchFeed } from "@/components/objectives/filterable-match-feed";
 import { ObjectiveSidebar } from "@/components/objectives/objective-sidebar";
 
@@ -28,11 +28,11 @@ export default async function ObjectiveDetailPage({
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("*")
+    .select("*, cluster:clusters(id, situation_summary, combined_urgency)")
     .eq("objective_id", id)
     .order("created_at", { ascending: false });
 
-  const typedMatches = (matches || []) as Match[];
+  const typedMatches = (matches || []) as MatchWithCluster[];
 
   return (
     <div className="space-y-6">
