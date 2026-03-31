@@ -32,51 +32,53 @@ Invoke **`signal-matching`** using retrieved Shared Patterns and Few-Shot Exampl
 ### Step 4: Clustering
 Group matches by account and theme within a 72-hour window. For each group with 2+ matches, ask the LLM: "Do these matches refer to the same underlying event or theme?" If yes, assign the same `cluster_id`. Multi-source clusters (same event seen in Slack and Gong) rank higher.
 
-## 4. Supabase Writes
+## 4. Write via App API
 
-Writing results is a two-step process when clusters exist:
-
-### Step 4a: Write Clusters
-First, write any cluster records to the `clusters` table and retrieve the generated UUIDs:
+Send all results in a single POST to the app's `/api/signals` endpoint. The endpoint handles the two-step write (clusters first, then matches) internally.
 
 ```
-POST /rest/v1/clusters
+POST https://<app-domain>/api/signals
+Authorization: Bearer <SIGNALS_API_KEY>
+Content-Type: application/json
 
 {
-  "pm_id": "uuid",
-  "account": "string or null",
-  "situation_summary": "English summary of the combined event",
-  "combined_urgency": "act_now | this_week | background"
+  "clusters": [
+    {
+      "pm_id": "uuid",
+      "account": "string or null",
+      "situation_summary": "English summary of the combined event",
+      "combined_urgency": "act_now | this_week | background"
+    }
+  ],
+  "matches": [
+    {
+      "objective_id": "uuid",
+      "pm_id": "uuid",
+      "source": "slack | salesforce | gong | gmail",
+      "source_timestamp": "ISO 8601",
+      "account": "string or null",
+      "content_summary": "English summary",
+      "original_content": "original text if non-English",
+      "source_language": "detected language code",
+      "speaker_role": "customer | internal | system",
+      "source_reference": { "type": "...", "id": "...", "deeplink": "..." },
+      "relevance_score": "number",
+      "explanation": "English explanation",
+      "category": "opportunity | risk | info",
+      "urgency": "act_now | this_week | background",
+      "cluster_id": "cluster_index:0 — references index in clusters array above, or null",
+      "feedback": "pending"
+    }
+  ]
 }
 ```
 
-### Step 4b: Write Matches
-Then, write all matches scoring above the threshold to the `matches` table, using the `cluster_id` UUIDs returned from step 4a:
+**Cluster references:** Matches reference clusters by index using `"cluster_index:0"`, `"cluster_index:1"`, etc. The API resolves these to the actual UUIDs generated when clusters are inserted. Matches without a cluster set `cluster_id` to `null`.
 
+**Response:**
+```json
+{ "success": true, "clusters_created": 2, "matches_created": 7 }
 ```
-POST /rest/v1/matches
-
-{
-  "objective_id": "uuid",
-  "pm_id": "uuid",
-  "source": "slack | salesforce | gong",
-  "source_timestamp": "ISO 8601",
-  "account": "string or null",
-  "content_summary": "English summary",
-  "original_content": "original text if non-English",
-  "source_language": "detected language code",
-  "speaker_role": "customer | internal | system",
-  "source_reference": { "type": "...", "id": "...", "deeplink": "..." },
-  "relevance_score": "number",
-  "explanation": "English explanation",
-  "category": "opportunity | risk | info",
-  "urgency": "act_now | this_week | background",
-  "cluster_id": "uuid or null — references the clusters table",
-  "feedback": "pending"
-}
-```
-
-Matches without a cluster set `cluster_id` to `null`.
 
 ## 5. Summary Report
 
