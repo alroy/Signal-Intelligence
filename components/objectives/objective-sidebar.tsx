@@ -1,4 +1,4 @@
-import type { Objective, Match } from "@/types/database";
+import type { Objective, MatchWithCluster } from "@/types/database";
 import { StatusToggle } from "./status-toggle";
 
 export function ObjectiveSidebar({
@@ -6,12 +6,17 @@ export function ObjectiveSidebar({
   matches,
 }: {
   objective: Objective;
-  matches: Match[];
+  matches: MatchWithCluster[];
 }) {
   const total = matches.length;
   const confirmed = matches.filter((m) => m.feedback === "confirmed").length;
   const dismissed = matches.filter((m) => m.feedback === "dismissed").length;
   const pending = matches.filter((m) => m.feedback === "pending").length;
+
+  const clusterIds = new Set(
+    matches.map((m) => m.cluster?.id).filter(Boolean)
+  );
+  const clusteredCount = matches.filter((m) => m.cluster !== null).length;
 
   const categoryBreakdown = matches.reduce(
     (acc, m) => {
@@ -66,6 +71,26 @@ export function ObjectiveSidebar({
           </div>
         </dl>
       </div>
+
+      {clusterIds.size > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">Clusters</h3>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-gray-600">Active clusters</dt>
+              <dd className="font-medium">{clusterIds.size}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-purple-600">Clustered</dt>
+              <dd className="font-medium">{clusteredCount}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-gray-400">Unclustered</dt>
+              <dd className="font-medium">{total - clusteredCount}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-medium text-gray-500">By Category</h3>

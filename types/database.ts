@@ -47,6 +47,10 @@ export interface Cluster {
   created_at: string;
 }
 
+export interface MatchWithCluster extends Match {
+  cluster: Pick<Cluster, "id" | "situation_summary" | "combined_urgency"> | null;
+}
+
 export interface PmFeedback {
   id: string;
   pm_id: string;

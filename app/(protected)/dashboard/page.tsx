@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
+import { CreateObjectiveForm } from "@/components/dashboard/create-objective-form";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -56,11 +57,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Dashboard</h2>
-        <p className="mt-1 text-gray-600">
-          Welcome back, {profile?.name || profile?.email}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <p className="mt-1 text-gray-600">
+            Welcome back, {profile?.name || profile?.email}
+          </p>
+        </div>
+        <CreateObjectiveForm />
       </div>
 
       {objectivesWithCounts.length > 0 ? (

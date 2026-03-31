@@ -1,4 +1,4 @@
-import type { Match } from "@/types/database";
+import type { MatchWithCluster } from "@/types/database";
 import { FeedbackButtons } from "./feedback-buttons";
 
 const sourceLogos: Record<string, { src: string; alt: string }> = {
@@ -21,7 +21,7 @@ const urgencyColors: Record<string, string> = {
   background: "bg-green-100 text-green-800",
 };
 
-export function MatchItem({ match }: { match: Match }) {
+export function MatchItem({ match }: { match: MatchWithCluster }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -65,6 +65,13 @@ export function MatchItem({ match }: { match: Match }) {
             >
               {match.urgency.replace("_", " ")}
             </span>
+            {match.cluster && (
+              <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+                {match.cluster.situation_summary.length > 40
+                  ? match.cluster.situation_summary.slice(0, 40) + "…"
+                  : match.cluster.situation_summary}
+              </span>
+            )}
           </div>
         </div>
         <div className="shrink-0">
