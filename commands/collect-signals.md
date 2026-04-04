@@ -1,15 +1,20 @@
 ---
 name: collect-signals
-description: Collect signals from Slack, Salesforce, Gong, and Gmail. Matches them against active objectives using LLM evaluation with dynamic thresholds. Writes results to a shared Monday.com board.
+description: Collect signals from Slack, Salesforce, Gong, and Gmail. Matches them against active objectives using LLM evaluation. Writes results to a shared Monday.com board.
 ---
 
-## 1. Supabase Context Retrieval
-Retrieve the following state from Supabase before beginning collection:
+## Scope
 
-* **Active Objectives**: Fetch all objectives for the current PM where `status = 'active'`.
-* **Shared Patterns**: Fetch patterns with `confidence > 0.7` to boost and `confidence < 0.3` to penalize.
-* **Learning Loop**: Retrieve 5 "confirmed" and 5 "dismissed" feedback records from `pm_feedback` for few-shot prompting.
-* **Threshold Calibration**: Calculate confirmation rates of recent score bands (4-6, 7-8, 9-10). If a band is under-performing (< 30% confirmation over the last 2 weeks), raise the minimum threshold to exclude it from primary results.
+This command runs inside Cowork. It can **read** from Slack, Salesforce, Gong, and Gmail via MCP connectors, and **write** to Monday.com via the Monday MCP server. It has no access to Supabase or the web app.
+
+## 1. Context from Project Memory
+
+Before collection, read the following from Cowork project memory (set during initial configuration):
+
+* **Active Objectives**: The PM's current objectives (title, ID, decomposition with entities_to_watch and relevant_accounts).
+* **PM UUID**: The PM's Supabase user ID (used to tag Monday items).
+
+These are maintained manually by the PM via `/pm-signal-intelligence:create-objective` and stored in project memory.
 
 ## 2. Signal Collection (Parallel)
 Gather raw data from the last 24 hours (or specified `--days`):
@@ -28,7 +33,7 @@ Invoke **`signal-preprocessing`** to standardize all raw data into a JSON format
 Perform a string-match against `entities_to_watch` and `relevant_accounts`. Skip LLM matching if no overlap exists.
 
 ### Step 3: LLM Matching
-Invoke **`signal-matching`** using retrieved Shared Patterns and Few-Shot Examples.
+Invoke **`signal-matching`** to evaluate each signal against the PM's objectives.
 
 ## 4. Write to Monday.com Board
 
