@@ -1,6 +1,6 @@
 ---
 name: collect-signals
-description: Collect signals from Slack, Salesforce, and Gong. Matches them against active objectives using LLM evaluation and clustering. Writes results to a shared Monday.com board.
+description: Collect signals from Slack, Salesforce, Gong, and Gmail. Matches them against active objectives using LLM evaluation and clustering. Writes results to a shared Monday.com board.
 ---
 
 ## 1. Context from Project Memory
@@ -18,6 +18,7 @@ Gather raw data from the last 24 hours (or specified `--days`):
 * **Slack**: Summarize threads (3+ messages) and skip short chatter (< 20 chars).
 * **Salesforce**: Query for stage changes, new notes, and renewals within 60 days.
 * **Gong**: Extract 5-10 "Key Moments" per call using the Gong MCP server.
+* **Gmail**: Pull threads from the last 24 hours. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
 
 ## 3. Intelligence Pipeline
 
@@ -47,7 +48,7 @@ For each match, call the Monday MCP `create_item` tool:
 |---|---|---|
 | PM UUID | `text_mm23fspz` | PM's Supabase user ID |
 | Objective ID | `text_mm23qar7` | Matched objective UUID |
-| Source | `text_mm238jbc` | `slack`, `salesforce`, or `gong` |
+| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, or `gmail` |
 | Account | `text_mm23xscc` | Customer account name (or empty) |
 | Content Summary | `text_mm23eqyw` | English summary of the signal |
 | Original Content | `long_text_mm23wnrf` | Original text (if non-English or worth preserving) |
@@ -66,4 +67,4 @@ For each match, call the Monday MCP `create_item` tool:
 
 Upon completion, generate a final response to the PM:
 
-> "Collected [N] signals from Slack, Salesforce, and Gong. Created [M] items on the shared Monday board across [K] active objectives. [X] signals were grouped into clusters. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
+> "Collected [N] signals from Slack, Salesforce, Gong, and Gmail. Created [M] items on the shared Monday board across [K] active objectives. [X] signals were grouped into clusters. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."

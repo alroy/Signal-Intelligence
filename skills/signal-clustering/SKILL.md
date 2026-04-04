@@ -1,6 +1,6 @@
 ---
 name: signal-clustering
-description: Groups individual matches into cohesive "Situations" or "Events." This reduces signal fatigue by connecting related data points across different sources (Slack, Gong, Salesforce) within a specific timeframe.
+description: Groups individual matches into cohesive "Situations" or "Events." This reduces signal fatigue by connecting related data points across different sources (Slack, Gong, Salesforce, Gmail) within a specific timeframe.
 ---
 
 ## Clustering Logic
@@ -31,6 +31,8 @@ For every cluster identified, generate:
 | Salesforce Stage Change (to Risk) | Slack thread discussing a champion leaving | **Cluster:** Label as "Account Health Deterioration". |
 | Gong call mentioning a competitor | Salesforce note about a new RFP | **Cluster:** Label as "Competitive Threat / New Procurement". |
 | Slack chatter about a feature request | Gong call where a user expresses frustration | **Cluster:** Label as "Product Gap Impacting Relationship". |
+| Gmail renewal negotiation thread | Salesforce opportunity stage change | **Cluster:** Label as "Active Renewal Negotiation". |
+| Gmail escalation from city manager | Slack internal triage thread | **Cluster:** Label as "Customer Escalation In Progress". |
 
 ## Constraints
 * Do not cluster signals from different Accounts even if the "Theme" is similar (e.g., two different cities facing the same state-level budget cut). These must remain distinct for PM workflow.

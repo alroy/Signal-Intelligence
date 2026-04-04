@@ -1,6 +1,6 @@
 ---
 name: query
-description: Ask a natural language question across Slack, Salesforce, and Gong. Returns an English answer with source citations. Does not write to Supabase.
+description: Ask a natural language question across Slack, Salesforce, Gong, and Gmail. Returns an English answer with source citations. Does not write to Supabase.
 ---
 
 ## When to use
@@ -14,7 +14,7 @@ The PM asks a question like:
 ## Steps
 
 1. Analyze the PM's question to determine:
-   - Which sources to query (Slack, Salesforce, Gong, or all).
+   - Which sources to query (Slack, Salesforce, Gong, Gmail, or all).
    - What time range is relevant (explicit or inferred, default last 30 days).
    - What entities, accounts, or topics to search for.
 
@@ -22,11 +22,13 @@ The PM asks a question like:
    - Slack: keyword search across channels.
    - Salesforce: record search or SOQL query.
    - Gong: use the search_calls tool for keyword matches in transcripts.
+   - Gmail: search threads by keyword, sender/recipient domain, or date range.
 
 3. Synthesize an English answer with citations:
    - Cite Slack messages with channel name and date.
    - Cite Gong calls with call title, timestamp link, and who said it.
    - Cite Salesforce records with type and date.
+   - Cite Gmail threads with subject, participants, and date.
    - Preserve original-language excerpts when citing non-English content.
    - Note conflicts if sources disagree.
 
@@ -35,5 +37,5 @@ The PM asks a question like:
 
 ## Notes
 
-- This command is read-only. It queries source systems directly and does not read from or write to Supabase.
+- This command is read-only. It queries source systems (Slack, Salesforce, Gong, Gmail) directly and does not read from or write to Supabase.
 - All processing happens in memory. No state is persisted.
