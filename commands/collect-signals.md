@@ -1,6 +1,6 @@
 ---
 name: collect-signals
-description: Collect signals from Slack, Salesforce, and Gong. Matches them against active objectives using LLM evaluation with dynamic thresholds and clustering.
+description: Collect signals from Slack, Salesforce, Gong, and Gmail. Matches them against active objectives using LLM evaluation with dynamic thresholds. Writes results to a shared Monday.com board.
 ---
 
 ## 1. Supabase Context Retrieval
@@ -17,6 +17,7 @@ Gather raw data from the last 24 hours (or specified `--days`):
 * **Slack**: Summarize threads (3+ messages) and skip short chatter (< 20 chars).
 * **Salesforce**: Query for stage changes, new notes, and renewals within 60 days.
 * **Gong**: Extract 5-10 "Key Moments" per call using the Gong MCP server.
+* **Gmail**: Pull threads from the last 24 hours. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
 
 ## 3. Intelligence Pipeline
 
@@ -29,59 +30,36 @@ Perform a string-match against `entities_to_watch` and `relevant_accounts`. Skip
 ### Step 3: LLM Matching
 Invoke **`signal-matching`** using retrieved Shared Patterns and Few-Shot Examples.
 
-### Step 4: Clustering
-Group matches by account and theme within a 72-hour window. For each group with 2+ matches, ask the LLM: "Do these matches refer to the same underlying event or theme?" If yes, assign the same `cluster_id`. Multi-source clusters (same event seen in Slack and Gong) rank higher.
+## 4. Write to Monday.com Board
 
-## 4. Write via App API
+Write each matched signal as an item on the shared Monday.com board using the Monday MCP server. Do not cluster signals — clustering is handled by the web app after sync.
 
-Send all results in a single POST to the app's `/api/signals` endpoint. The endpoint handles the two-step write (clusters first, then matches) internally.
+For each match, call the Monday MCP `create_item` tool:
 
-```
-POST https://<app-domain>/api/signals
-Authorization: Bearer <SIGNALS_API_KEY>
-Content-Type: application/json
+* **Board ID**: `18407235431`
+* **Item name**: Content summary (truncated to 50 characters)
+* **Column values**:
 
-{
-  "clusters": [
-    {
-      "pm_id": "uuid",
-      "account": "string or null",
-      "situation_summary": "English summary of the combined event",
-      "combined_urgency": "act_now | this_week | background"
-    }
-  ],
-  "matches": [
-    {
-      "objective_id": "uuid",
-      "pm_id": "uuid",
-      "source": "slack | salesforce | gong | gmail",
-      "source_timestamp": "ISO 8601",
-      "account": "string or null",
-      "content_summary": "English summary",
-      "original_content": "original text if non-English",
-      "source_language": "detected language code",
-      "speaker_role": "customer | internal | system",
-      "source_reference": { "type": "...", "id": "...", "deeplink": "..." },
-      "relevance_score": "number",
-      "explanation": "English explanation",
-      "category": "opportunity | risk | info",
-      "urgency": "act_now | this_week | background",
-      "cluster_id": "cluster_index:0 — references index in clusters array above, or null",
-      "feedback": "pending"
-    }
-  ]
-}
-```
+| Column | Monday Column ID | Value |
+|---|---|---|
+| PM UUID | `text_mm23fspz` | PM's Supabase user ID |
+| Objective ID | `text_mm23qar7` | Matched objective UUID |
+| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, or `gmail` |
+| Account | `text_mm23xscc` | Customer account name (or empty) |
+| Content Summary | `text_mm23eqyw` | English summary of the signal |
+| Original Content | `long_text_mm23wnrf` | Original text (if non-English or worth preserving) |
+| Source Language | `text_mm23f67y` | Detected language code (e.g. `en`, `he`) |
+| Speaker Role | `text_mm23vdkn` | `customer`, `internal`, or `system` |
+| Score | `numeric_mm23h4sr` | Relevance score (0-10) |
+| Explanation | `text_mm23983t` | Why this signal matches the objective |
+| Category | `color_mm23tcn7` | `opportunity`, `risk`, or `info` |
+| Urgency | `color_mm23vf2s` | `act_now`, `this_week`, or `background` |
+| Status | `color_mm23b9pc` | Always set to `Pending` |
 
-**Cluster references:** Matches reference clusters by index using `"cluster_index:0"`, `"cluster_index:1"`, etc. The API resolves these to the actual UUIDs generated when clusters are inserted. Matches without a cluster set `cluster_id` to `null`.
-
-**Response:**
-```json
-{ "success": true, "clusters_created": 2, "matches_created": 7 }
-```
+**Note:** The web app's cron job syncs pending items from this board into Supabase twice daily. PMs can also trigger a manual sync from the dashboard.
 
 ## 5. Summary Report
 
-Upon completion of all database writes, generate a final response to the PM:
+Upon completion, generate a final response to the PM:
 
-> "Collected [N] signals from Slack, Salesforce, and Gong. Identified [M] new matches across [K] active objectives. [X] signals were grouped into clusters. Open the web app to review your updated dashboard."
+> "Collected [N] signals from Slack, Salesforce, Gong, and Gmail. Created [M] items on the shared Monday board across [K] active objectives. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
