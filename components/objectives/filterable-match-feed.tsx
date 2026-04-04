@@ -23,7 +23,7 @@ const filterDefs = [
   {
     key: "source" as const,
     label: "Source",
-    options: ["all", "slack", "salesforce", "gong"],
+    options: ["all", "slack", "salesforce", "gong", "gmail", "monday"],
   },
 ];
 

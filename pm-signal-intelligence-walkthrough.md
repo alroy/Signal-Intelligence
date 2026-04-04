@@ -5,10 +5,43 @@ A step-by-step guide for non-developers. Estimated total time: 45-60 minutes.
 By the end of this guide you'll have:
 1. A Supabase project with all database tables.
 2. Google OAuth configured (for the app, later).
-3. Claude Desktop with Slack, Salesforce, and Gong connected.
+3. Claude Desktop with Slack, Salesforce, Gong, and **Gmail** connected.
 4. The PM Signal Intelligence plugin installed in Cowork.
-5. A daily scheduled task for automatic signal collection.
-6. Your first objective with a 30-day backfill of real signals.
+5. A shared Monday.com board linked to the signal pipeline.
+6. A daily scheduled task for automatic signal collection.
+7. Your first objective with a 30-day backfill of real signals.
+
+---
+
+## Architecture Overview
+
+```
+Data Sources (Slack, Salesforce, Gong, Gmail)
+        │
+        ▼
+  Cowork Plugin  ──▶  Monday.com Board (shared, one board for all PMs)
+                              │
+                              ▼
+                     Cron Job (sync-monday)
+                              │
+                              ▼
+                        Supabase DB
+                              │
+                              ▼
+                         Web App
+                         (Review & Feedback ──▶ syncs back to Monday.com)
+```
+
+**How it works:** The Cowork plugin collects signals from all data sources (including Gmail threads — matching account domains, summarizing key moments) and writes them to a shared Monday.com board. Each item is tagged with the PM's UUID to differentiate ownership. A cron job periodically syncs pending items from Monday.com into Supabase. When a PM confirms or dismisses a signal in the web app, the feedback is written back to Monday.com so the plugin can see it.
+
+**Shared Monday board structure:** One board holds signals for all PMs. Key columns: PM UUID, Objective ID, Source, Account, Content Summary, Score, Category, Urgency, Status (Pending / Confirmed / Dismissed).
+
+### Gmail as a Data Source
+
+Gmail is a primary signal source. The plugin:
+- Pulls threads from Gmail via the Gmail connector.
+- Matches account domains against your Salesforce accounts to associate signals with the right customer.
+- Summarizes key moments (renewal discussions, escalation threads, feature requests) and writes them as signal items.
 
 ---
 

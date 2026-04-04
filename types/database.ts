@@ -33,6 +33,7 @@ export interface Match {
   category: "opportunity" | "risk" | "info";
   urgency: "act_now" | "this_week" | "background";
   cluster_id: string | null;
+  monday_item_id: string | null;
   feedback: "pending" | "confirmed" | "dismissed";
   feedback_at: string | null;
   created_at: string;
