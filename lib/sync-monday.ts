@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchPendingSignals, type MondayItem } from "@/lib/monday";
+import { rescoreNewMatches } from "@/lib/rescore";
 
 // Monday.com column IDs from the Signal Intelligence board (board 18407235431)
 const MONDAY_COLUMNS = {
@@ -41,7 +42,7 @@ function mapItemToMatch(item: MondayItem) {
 }
 
 export async function syncMondaySignals(): Promise<
-  { success: true; synced: number } | { error: string }
+  { success: true; synced: number; rescored: number } | { error: string }
 > {
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!boardId) {
@@ -51,7 +52,7 @@ export async function syncMondaySignals(): Promise<
   const items = await fetchPendingSignals(boardId);
 
   if (items.length === 0) {
-    return { success: true, synced: 0 };
+    return { success: true, synced: 0, rescored: 0 };
   }
 
   const rows = items.map(mapItemToMatch);
@@ -67,5 +68,8 @@ export async function syncMondaySignals(): Promise<
     return { error: `Supabase upsert failed: ${error.message}` };
   }
 
-  return { success: true, synced: data.length };
+  // Re-score synced matches using shared patterns + PM feedback history
+  const { rescored } = await rescoreNewMatches();
+
+  return { success: true, synced: data.length, rescored };
 }
