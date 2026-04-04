@@ -1,6 +1,6 @@
 {
   "name": "pm-signal-intelligence",
   "version": "1.0.0",
-  "description": "Monitors Slack, Salesforce, and Gong for signals relevant to PM-defined strategic objectives. Matches signals using LLM evaluation, writes results to Supabase, and improves over time through PM feedback. Built for B2G product teams.",
+  "description": "Monitors Slack, Salesforce, Gong, and Gmail for signals relevant to PM-defined strategic objectives. Matches signals using LLM evaluation, writes results to Supabase, and improves over time through PM feedback. Built for B2G product teams.",
   "author": "Gil Alroy"
 }

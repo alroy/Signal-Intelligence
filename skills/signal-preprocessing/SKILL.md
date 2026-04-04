@@ -1,6 +1,6 @@
 ---
 name: signal-preprocessing
-description: Normalizes raw data from Slack, Salesforce, and Gong into a standard signal format for matching. Use when processing source data during signal collection. All signals are processed in memory and not persisted.
+description: Normalizes raw data from Slack, Salesforce, Gong, and Gmail into a standard signal format for matching. Use when processing source data during signal collection. All signals are processed in memory and not persisted.
 ---
 
 ## Normalized signal format
@@ -9,7 +9,7 @@ Every signal, regardless of source, should be normalized to this structure befor
 
 ```json
 {
-  "source": "slack | salesforce | gong",
+  "source": "slack | salesforce | gong | gmail",
   "timestamp": "ISO 8601",
   "account": "account name or null",
   "content": "English summary, 1-3 sentences",
@@ -17,7 +17,7 @@ Every signal, regardless of source, should be normalized to this structure befor
   "source_language": "detected language code",
   "speaker_role": "customer | internal | system",
   "source_reference": {
-    "type": "slack_message | salesforce_record | gong_call",
+    "type": "slack_message | salesforce_record | gong_call | gmail_thread",
     "id": "source-specific ID",
     "deeplink": "URL to the specific message, record, or call moment",
     "timestamp_in_source": "for Gong: seconds into the recording"
@@ -63,3 +63,12 @@ Every signal, regardless of source, should be normalized to this structure befor
 5. `speaker_role` = "customer" for customer statements, "internal" for rep statements.
 6. Generate an English summary for each key moment even if the call was in another language.
 7. Include a deeplink to the Gong recording at the specific timestamp.
+
+## Gmail rules
+
+1. Pull threads from the specified time range via the Gmail MCP server.
+2. Match sender/recipient domains against `relevant_accounts` from the active objectives.
+3. For matched threads, summarize key moments as `content`: renewal discussions, escalation threads, feature requests, stakeholder introductions.
+4. Identify `speaker_role` based on sender domain: external domains = "customer", internal domain = "internal".
+5. Non-English threads: set `original_content` to the original text, generate an English summary in `content`.
+6. Generate a Gmail deeplink to the thread.
