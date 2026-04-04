@@ -37,11 +37,14 @@ interface FetchItemsResponse {
   boards: { items_page: { items: MondayItem[] } }[];
 }
 
+// Column ID for the Status column on the Signal Intelligence board (board 18407235431)
+const STATUS_COLUMN_ID = "color_mm23b9pc";
+
 export async function fetchPendingSignals(boardId: string): Promise<MondayItem[]> {
   const query = `
     query ($boardId: [ID!]!) {
       boards(ids: $boardId) {
-        items_page(query_params: { rules: [{ column_id: "status", compare_value: ["Pending"] }] }) {
+        items_page(query_params: { rules: [{ column_id: "${STATUS_COLUMN_ID}", compare_value: ["Pending"] }] }) {
           items {
             id
             name
@@ -64,9 +67,14 @@ export async function updateSignalStatus(
   itemId: string,
   status: "Confirmed" | "Dismissed"
 ): Promise<void> {
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!boardId) {
+    throw new Error("MONDAY_BOARD_ID environment variable is not set");
+  }
+
   const query = `
-    mutation ($itemId: ID!, $value: JSON!) {
-      change_simple_column_value(item_id: $itemId, board_id: 0, column_id: "status", value: $value) {
+    mutation ($itemId: ID!, $boardId: ID!, $value: JSON!) {
+      change_simple_column_value(item_id: $itemId, board_id: $boardId, column_id: "${STATUS_COLUMN_ID}", value: $value) {
         id
       }
     }
@@ -74,6 +82,7 @@ export async function updateSignalStatus(
 
   await mondayQuery(query, {
     itemId,
+    boardId,
     value: JSON.stringify({ label: status }),
   });
 }
