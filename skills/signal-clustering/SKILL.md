@@ -5,7 +5,7 @@ description: Groups individual matches into cohesive "Situations" or "Events." T
 
 ## Clustering Logic
 
-Run this skill after `signal-matching` has identified relevant signals, but before the final write to the Supabase `matches` table.
+Run this skill after `signal-matching` has identified relevant signals, but before the final write to the Monday.com board.
 
 ### 1. Grouping Parameters
 * **Primary Anchor:** `account_id`. Signals must belong to the same account to be clustered.
