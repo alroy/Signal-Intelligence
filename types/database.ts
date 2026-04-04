@@ -34,6 +34,7 @@ export interface Match {
   urgency: "act_now" | "this_week" | "background";
   cluster_id: string | null;
   monday_item_id: string | null;
+  rescored_at: string | null;
   feedback: "pending" | "confirmed" | "dismissed";
   feedback_at: string | null;
   created_at: string;
