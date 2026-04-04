@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { updateSignalStatus } from "@/lib/monday";
 
 export async function submitFeedback(
   matchId: string,
@@ -30,16 +31,31 @@ export async function submitFeedback(
   }
 
   // Update match feedback status
-  const { error: matchError } = await supabase
+  const { data: updatedMatch, error: matchError } = await supabase
     .from("matches")
     .update({
       feedback: feedbackType,
       feedback_at: new Date().toISOString(),
     })
-    .eq("id", matchId);
+    .eq("id", matchId)
+    .select("monday_item_id")
+    .single();
 
   if (matchError) {
     return { error: matchError.message };
+  }
+
+  // Sync feedback back to Monday.com if this match originated from a Monday item
+  if (updatedMatch?.monday_item_id) {
+    try {
+      await updateSignalStatus(
+        updatedMatch.monday_item_id,
+        feedbackType === "confirmed" ? "Confirmed" : "Dismissed"
+      );
+    } catch {
+      // Monday sync is best-effort; don't fail the entire feedback action
+      console.error("Failed to sync feedback to Monday.com");
+    }
   }
 
   revalidatePath(`/objectives/${objectiveId}`);
