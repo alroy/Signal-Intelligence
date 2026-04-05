@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
-import { CreateObjectiveForm } from "@/components/dashboard/create-objective-form";
+import { NewObjectiveCard } from "@/components/dashboard/new-objective-card";
 import { SyncButton } from "@/components/dashboard/sync-button";
 
 export default async function DashboardPage() {
@@ -64,39 +64,31 @@ export default async function DashboardPage() {
           <p className="mt-1 text-gray-600">
             Welcome back, {profile?.name || profile?.email}
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <SyncButton />
-          <CreateObjectiveForm />
-        </div>
-      </div>
-
-      {objectivesWithCounts.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {objectivesWithCounts.map(
-            ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
-              <ObjectiveCard
-                key={objective.id}
-                objective={objective}
-                unreadCount={unreadCount}
-                highestUrgency={highestUrgency}
-                latestMatchAt={latestMatchAt}
-                totalMatches={totalMatches}
-              />
-            )
+          {objectivesWithCounts.length === 0 && (
+            <p className="mt-1 text-sm text-gray-400">
+              Define your first strategic objective to start monitoring signals
+              from Slack, Salesforce, Gong, and Gmail.
+            </p>
           )}
         </div>
-      ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900">
-            No active objectives
-          </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Your objectives will appear here once created.
-          </p>
-        </div>
-      )}
+        <SyncButton />
+      </div>
 
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <NewObjectiveCard />
+        {objectivesWithCounts.map(
+          ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
+            <ObjectiveCard
+              key={objective.id}
+              objective={objective}
+              unreadCount={unreadCount}
+              highestUrgency={highestUrgency}
+              latestMatchAt={latestMatchAt}
+              totalMatches={totalMatches}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 }
