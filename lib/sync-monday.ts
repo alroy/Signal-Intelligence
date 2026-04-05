@@ -3,7 +3,7 @@ import { fetchPendingSignals, type MondayItem } from "@/lib/monday";
 import { rescoreNewMatches } from "@/lib/rescore";
 
 // Monday.com column IDs from the Signal Intelligence board (board 18407235431)
-const MONDAY_COLUMNS = {
+export const MONDAY_COLUMNS = {
   pm_uuid: "text_mm23fspz",
   objective_id: "text_mm23qar7",
   source: "text_mm238jbc",
@@ -23,7 +23,7 @@ const MONDAY_COLUMNS = {
   decomposition: "long_text_mm24fq7d",
 } as const;
 
-function getColumnText(item: MondayItem, columnId: string): string {
+export function getColumnText(item: MondayItem, columnId: string): string {
   return item.column_values.find((c) => c.id === columnId)?.text ?? "";
 }
 
@@ -36,7 +36,7 @@ function parseSourceReference(text: string): Record<string, unknown> | null {
   }
 }
 
-function mapItemToMatch(item: MondayItem) {
+export function mapItemToMatch(item: MondayItem) {
   return {
     monday_item_id: item.id,
     pm_id: getColumnText(item, MONDAY_COLUMNS.pm_uuid),
@@ -66,7 +66,7 @@ interface ClusterGroup {
   items: MondayItem[];
 }
 
-function groupItemsByClusters(items: MondayItem[]): {
+export function groupItemsByClusters(items: MondayItem[]): {
   clustered: ClusterGroup[];
   unclustered: MondayItem[];
 } {
@@ -96,11 +96,11 @@ function groupItemsByClusters(items: MondayItem[]): {
   return { clustered: Array.from(clusterMap.values()), unclustered };
 }
 
-function isDecompositionItem(item: MondayItem): boolean {
+export function isDecompositionItem(item: MondayItem): boolean {
   return getColumnText(item, MONDAY_COLUMNS.source) === "objective_decomposition";
 }
 
-function isNewObjectiveMarker(item: MondayItem): boolean {
+export function isNewObjectiveMarker(item: MondayItem): boolean {
   return getColumnText(item, MONDAY_COLUMNS.source) === "new_objective";
 }
 

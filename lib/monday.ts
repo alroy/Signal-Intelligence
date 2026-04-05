@@ -63,6 +63,29 @@ export async function fetchPendingSignals(boardId: string): Promise<MondayItem[]
   return data.boards[0]?.items_page.items ?? [];
 }
 
+export async function fetchAllSignals(boardId: string): Promise<MondayItem[]> {
+  const query = `
+    query ($boardId: [ID!]!) {
+      boards(ids: $boardId) {
+        items_page(limit: 500) {
+          items {
+            id
+            name
+            column_values {
+              id
+              text
+              value
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await mondayQuery<FetchItemsResponse>(query, { boardId: [boardId] });
+  return data.boards[0]?.items_page.items ?? [];
+}
+
 export async function updateSignalStatus(
   itemId: string,
   status: "Confirmed" | "Dismissed"
