@@ -1,6 +1,6 @@
 ---
 name: query
-description: Ask a natural language question across Slack, Salesforce, Gong, and Gmail. Returns an English answer with source citations. Does not write to Supabase.
+description: Ask a natural language question across Slack, Salesforce, Gong, and Gmail. Returns an English answer with source citations. Does not write to any external system.
 ---
 
 ## When to use
@@ -33,9 +33,9 @@ The PM asks a question like:
    - Note conflicts if sources disagree.
 
 4. If the question suggests a topic not covered by any active objective, offer:
-   "You don't have an objective covering [topic]. Want me to create one?"
+   "You don't have an objective covering [topic]. Want me to help you set one up? You'll need to create it in the web app first, then I can enrich it with a decomposition and run a backfill."
 
 ## Notes
 
-- This command is read-only. It queries source systems (Slack, Salesforce, Gong, Gmail) directly and does not read from or write to Supabase.
+- This command is read-only. It queries source systems (Slack, Salesforce, Gong, Gmail) directly and does not read from or write to Supabase or Monday.
 - All processing happens in memory. No state is persisted.

@@ -3,6 +3,22 @@ name: signal-matching
 description: Evaluates a pre-filtered signal against a PM's objective using LLM scoring. Returns relevance, score, category, urgency, and source language. Handles multilingual content and writes all output in English.
 ---
 
+## Integration with feedback-learning
+
+When `collect-signals` invokes this skill, it should prepend few-shot examples from the `feedback-learning` skill to the prompt below. Insert them as:
+
+```
+EXAMPLES THIS PM CONFIRMED AS RELEVANT:
+- "[content_summary]" — [explanation]
+
+EXAMPLES THIS PM DISMISSED AS NOT RELEVANT:
+- "[content_summary]" — [explanation]
+```
+
+Place these sections after the RELEVANT ACCOUNTS section and before SIGNAL TO EVALUATE.
+
+**Note:** The plugin does not have access to shared patterns (stored in Supabase). The app's rescore pipeline applies shared pattern boosting/penalizing after Monday→Supabase sync, so final scores seen by the PM in the web app may differ from the plugin's initial scores.
+
 ## Matching prompt
 
 Use this prompt for each signal that passes the pre-filter:

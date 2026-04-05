@@ -12,7 +12,17 @@ Before collection, read the following from Cowork project memory (set during obj
 
 These are maintained by the PM via `/pm-signal-intelligence:create-objective` and stored in project memory.
 
-## 2. Signal Collection (Parallel)
+## 2. Learning Context
+
+Invoke **`feedback-learning`** to read confirmed and dismissed items from the Monday board. This returns:
+* **Few-shot examples**: Up to 5 confirmed and 5 dismissed signals to guide LLM matching.
+* **Score threshold**: Minimum score to include, calibrated from the PM's feedback history.
+
+If no reviewed items exist yet, use default settings (minimum score 5, no few-shot examples).
+
+**Note:** The few-shot examples use the plugin's original scores (pre-rescore). The app rescores matches after sync using shared patterns and PM feedback, but those rescored values stay in Supabase. This is expected — the plugin calibrates its own scoring accuracy.
+
+## 3. Signal Collection (Parallel)
 Gather raw data from the last 24 hours (or specified `--days`):
 
 * **Slack**: Summarize threads (3+ messages) and skip short chatter (< 20 chars).
@@ -20,7 +30,7 @@ Gather raw data from the last 24 hours (or specified `--days`):
 * **Gong**: Extract 5-10 "Key Moments" per call using the Gong MCP server.
 * **Gmail**: Pull threads from the last 24 hours. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
 
-## 3. Intelligence Pipeline
+## 4. Intelligence Pipeline
 
 ### Step 1: Normalization
 Invoke **`signal-preprocessing`** to standardize all raw data into a JSON format.
@@ -29,12 +39,14 @@ Invoke **`signal-preprocessing`** to standardize all raw data into a JSON format
 Perform a string-match against `entities_to_watch` and `relevant_accounts`. Skip LLM matching if no overlap exists.
 
 ### Step 3: LLM Matching
-Invoke **`signal-matching`** to evaluate each signal against the PM's objectives.
+Invoke **`signal-matching`** to evaluate each signal against the PM's objectives. Include the few-shot examples from the learning context to guide scoring. Only keep matches above the calibrated score threshold.
+
+**Note:** The plugin does not have access to shared patterns (stored in Supabase). The app's rescore pipeline applies shared pattern boosting/penalizing after sync.
 
 ### Step 4: Clustering
-Group matches by account and theme within a 72-hour window. For each group with 2+ matches, ask the LLM: "Do these matches refer to the same underlying event or theme?" If yes, assign the same `cluster_id`. Multi-source clusters (same event seen in Slack and Gong) rank higher.
+Invoke **`signal-clustering`** to group matches by account and theme within a 72-hour window. For each cluster, generate a `cluster_id` (UUID) and a situation summary. All items in a cluster share the same `cluster_id` and `situation_summary` values when written to Monday.
 
-## 4. Write to Monday.com Board
+## 5. Write to Monday.com Board
 
 Write each matched signal as an item on the shared Monday.com board using the Monday MCP server.
 
@@ -44,27 +56,30 @@ For each match, call the Monday MCP `create_item` tool:
 * **Item name**: Content summary (truncated to 50 characters)
 * **Column values**:
 
-| Column | Monday Column ID | Value |
-|---|---|---|
-| PM UUID | `text_mm23fspz` | PM's Supabase user ID |
-| Objective ID | `text_mm23qar7` | Matched objective UUID |
-| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, or `gmail` |
-| Account | `text_mm23xscc` | Customer account name (or empty) |
-| Content Summary | `text_mm23eqyw` | English summary of the signal |
-| Original Content | `long_text_mm23wnrf` | Original text (if non-English or worth preserving) |
-| Source Language | `text_mm23f67y` | Detected language code (e.g. `en`, `he`) |
-| Speaker Role | `text_mm23vdkn` | `customer`, `internal`, or `system` |
-| Score | `numeric_mm23h4sr` | Relevance score (0-10) |
-| Explanation | `text_mm23983t` | Why this signal matches the objective |
-| Category | `color_mm23tcn7` | `opportunity`, `risk`, or `info` |
-| Urgency | `color_mm23vf2s` | `act_now`, `this_week`, or `background` |
-| Cluster ID | `text_mm23b9pc` | Cluster UUID (or empty if unclustered) |
-| Status | `color_mm23b9pc` | Always set to `Pending` |
+| Column | Monday Column ID | Type | Value |
+|---|---|---|---|
+| PM UUID | `text_mm23fspz` | text | PM's Supabase user ID |
+| Objective ID | `text_mm23qar7` | text | Matched objective UUID |
+| Source | `text_mm238jbc` | text | `slack`, `salesforce`, `gong`, or `gmail` |
+| Account | `text_mm23xscc` | text | Customer account name (or empty) |
+| Content Summary | `text_mm23eqyw` | text | English summary of the signal |
+| Original Content | `long_text_mm23wnrf` | long_text | Original text (if non-English or worth preserving) |
+| Source Language | `text_mm23f67y` | text | Detected language code (e.g. `en`, `he`) |
+| Speaker Role | `text_mm23vdkn` | text | `customer`, `internal`, or `system` |
+| Score | `numeric_mm23h4sr` | numeric | Relevance score (0-10) |
+| Explanation | `text_mm23983t` | text | Why this signal matches the objective |
+| Category | `color_mm23tcn7` | status | `opportunity`, `risk`, or `info` |
+| Urgency | `color_mm23vf2s` | status | `act_now`, `this_week`, or `background` |
+| Source Reference | `long_text_mm24w82p` | long_text | JSON object with source type, ID, deeplink, and timestamp |
+| Source Timestamp | `text_mm242qzh` | text | ISO 8601 timestamp of the original signal |
+| Cluster ID | `text_mm247era` | text | Cluster UUID (empty if unclustered) |
+| Situation Summary | `text_mm24zxe` | text | 1-sentence cluster summary (empty if unclustered) |
+| Status | `color_mm23b9pc` | status | Always set to `Pending` |
 
-**Note:** The web app's cron job syncs pending items from this board into Supabase twice daily. PMs can also trigger a manual sync from the dashboard.
+**Note:** The web app's cron job syncs pending items from this board into Supabase. During sync, the app creates cluster records and resolves cluster IDs, then rescores each match using shared patterns and PM feedback history. PMs can also trigger a manual sync from the dashboard.
 
-## 5. Summary Report
+## 6. Summary Report
 
 Upon completion, generate a final response to the PM:
 
-> "Collected [N] signals from Slack, Salesforce, Gong, and Gmail. Created [M] items on the shared Monday board across [K] active objectives. [X] signals were grouped into clusters. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
+> "Collected [N] signals from Slack, Salesforce, Gong, and Gmail. Created [M] items on the shared Monday board across [K] active objectives. [X] signals were grouped into [C] clusters. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
