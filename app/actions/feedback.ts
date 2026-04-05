@@ -89,3 +89,33 @@ export async function updateObjectiveStatus(
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+export async function resolveObjective(
+  objectiveId: string,
+  resolutionNote: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { error } = await supabase
+    .from("objectives")
+    .update({
+      status: "resolved" as const,
+      resolution_note: resolutionNote || null,
+    })
+    .eq("id", objectiveId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/objectives/${objectiveId}`);
+  revalidatePath("/dashboard");
+  return { success: true };
+}
