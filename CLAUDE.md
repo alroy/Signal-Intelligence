@@ -27,7 +27,8 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 - Signal matches → Monday board items
 - Objective decompositions → Monday board items with `Source = "objective_decomposition"`
 - New objectives created in the web app → Monday board items with `Source = "new_objective"` (auto-discovered by the plugin's daily task)
-- The app's sync cron routes decomposition and signal items to the correct Supabase tables; `new_objective` markers are skipped by sync (they exist for the plugin to discover)
+- Objective status changes from the web app → Monday board items with `Source = "objective_status_change"` (auto-discovered by the plugin's daily task)
+- The app's sync cron routes decomposition and signal items to the correct Supabase tables; `new_objective` and `objective_status_change` markers are skipped by sync (they exist for the plugin to discover)
 
 ## Monday.com Board (18407235431)
 
@@ -70,6 +71,13 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 5. Plugin writes decomposition to Monday with `Source = "objective_decomposition"`
 6. Plugin updates the `new_objective` marker's Status to `Enriched`
 7. Sync cron detects decomposition item, updates objective's decomposition in Supabase
+
+### Objective Status Changes
+1. PM pauses, resolves, or reactivates objective in web app
+2. Web app updates Supabase and writes an `objective_status_change` marker to Monday board
+3. Plugin's daily task discovers the marker, updates objective status in project memory
+4. Plugin marks the Monday marker item's Status as `Enriched`
+5. Paused/resolved objectives are excluded from signal collection
 
 ### Monday → Supabase Sync (lib/sync-monday.ts)
 1. Fetches items with Status = "Pending"

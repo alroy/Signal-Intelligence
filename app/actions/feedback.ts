@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { updateSignalStatus } from "@/lib/monday";
+import { updateSignalStatus, createObjectiveStatusMarker } from "@/lib/monday";
 
 export async function submitFeedback(
   matchId: string,
@@ -76,13 +76,22 @@ export async function updateObjectiveStatus(
     return { error: "Not authenticated" };
   }
 
-  const { error } = await supabase
+  const { data: objective, error } = await supabase
     .from("objectives")
     .update({ status })
-    .eq("id", objectiveId);
+    .eq("id", objectiveId)
+    .select("title")
+    .single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Write status-change marker to Monday so the Cowork plugin discovers it
+  try {
+    await createObjectiveStatusMarker(objectiveId, user.id, status, objective.title ?? "");
+  } catch {
+    console.error("Failed to write objective status change to Monday.com");
   }
 
   revalidatePath(`/objectives/${objectiveId}`);
@@ -103,16 +112,25 @@ export async function resolveObjective(
     return { error: "Not authenticated" };
   }
 
-  const { error } = await supabase
+  const { data: objective, error } = await supabase
     .from("objectives")
     .update({
       status: "resolved" as const,
       resolution_note: resolutionNote || null,
     })
-    .eq("id", objectiveId);
+    .eq("id", objectiveId)
+    .select("title")
+    .single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Write status-change marker to Monday so the Cowork plugin discovers it
+  try {
+    await createObjectiveStatusMarker(objectiveId, user.id, "resolved", objective.title ?? "");
+  } catch {
+    console.error("Failed to write objective status change to Monday.com");
   }
 
   revalidatePath(`/objectives/${objectiveId}`);

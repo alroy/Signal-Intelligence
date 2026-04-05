@@ -110,6 +110,26 @@ export async function updateSignalStatus(
   });
 }
 
+export async function createObjectiveStatusMarker(
+  objectiveId: string,
+  pmId: string,
+  newStatus: "paused" | "resolved" | "active",
+  objectiveTitle: string
+): Promise<string> {
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!boardId) {
+    throw new Error("MONDAY_BOARD_ID environment variable is not set");
+  }
+
+  return createBoardItem(boardId, objectiveTitle.slice(0, 50), {
+    text_mm23fspz: pmId,
+    text_mm23qar7: objectiveId,
+    text_mm238jbc: "objective_status_change",
+    text_mm23eqyw: newStatus,
+    color_mm23b9pc: { index: 9 }, // Pending
+  });
+}
+
 export async function createBoardItem(
   boardId: string,
   itemName: string,
