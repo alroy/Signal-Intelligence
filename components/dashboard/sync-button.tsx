@@ -39,10 +39,13 @@ export function SyncButton() {
       if ("error" in result) {
         setToast({ message: `Sync failed: ${result.error}`, isError: true });
       } else {
-        setToast({
-          message: `Successfully synced ${result.synced} signal${result.synced === 1 ? "" : "s"}`,
-          isError: false,
-        });
+        const message =
+          result.synced === 0
+            ? "No signals to sync"
+            : result.synced === 1
+              ? "Successfully synced 1 item"
+              : `Successfully synced ${result.synced} items`;
+        setToast({ message, isError: false });
         setLastSyncedAt(new Date());
       }
       setTimeout(() => setToast(null), 4000);
