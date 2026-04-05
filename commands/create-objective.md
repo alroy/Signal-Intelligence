@@ -5,28 +5,39 @@ description: Define a new strategic objective. Queries Salesforce for account co
 
 ## Steps
 
-1. Ask the PM to describe the objective in natural language. If already provided, proceed.
+1. Check the Monday board for unenriched objectives from the web app:
+   - Read items from board `18407235431` where Source = `new_objective` and Status = `Pending`.
+   - Filter by PM UUID matching the current PM.
+   - If items exist, list them:
+     "I found these objectives you created in the web app that haven't been enriched yet:
+      1. [title] (ID: [objective_id])
+      2. [title] (ID: [objective_id])
+      Would you like me to enrich one of these, or create a new one?"
+   - If the PM selects one, use its Objective ID and title — skip to step 4 (Salesforce query).
+   - If no items found or PM wants a new one, continue with step 2.
 
-2. Check if the PM has already created the objective in the web app dashboard:
-   - Ask: "Have you already created this objective in the web app, or should I walk you through that first?"
+2. Ask the PM to describe the objective in natural language. If already provided, proceed.
+
+3. Ensure the objective exists in the web app:
+   - Ask: "Have you already created this objective in the web app?"
    - If not yet created: instruct the PM to create it via the dashboard's "+ New objective" button. The PM must provide the resulting objective ID (visible in the URL after creation).
    - If already created: ask for the objective ID.
 
-3. Query Salesforce for an account landscape summary:
+4. Query Salesforce for an account landscape summary:
    - Total active accounts grouped by active department count.
    - Accounts with open opportunities.
    - Accounts approaching renewal (next 90 days).
 
-4. Use the objective-decomposition skill to generate a structured decomposition from the objective text and Salesforce summary.
+5. Use the objective-decomposition skill to generate a structured decomposition from the objective text and Salesforce summary.
 
-5. Show the decomposition to the PM. Ask:
+6. Show the decomposition to the PM. Ask:
    - "Are there specific account names, department names, or people I should watch for?"
    - "Are there Slack channels that are particularly relevant?"
    - "Should I watch for terms in languages other than English (e.g., Hebrew)?"
 
-6. Apply the PM's edits.
+7. Apply the PM's edits.
 
-7. Write the decomposition to the Monday.com board so the app can sync it to Supabase:
+8. Write the decomposition to the Monday.com board so the app can sync it to Supabase:
 
    Call the Monday MCP `create_item` tool:
 
@@ -44,13 +55,15 @@ description: Define a new strategic objective. Queries Salesforce for account co
 
    The app's sync cron detects items with Source = `objective_decomposition` and updates the objective's `decomposition` field in Supabase instead of creating a match.
 
-8. Store the objective in Cowork project memory for use during signal collection:
-   - Store: `{ "id": "{objective_id}", "title": "{objective text}", "status": "active", "decomposition": {decomposition JSON} }`
-   - Add to the list of active objectives in project memory.
+9. If this objective came from a `new_objective` marker (step 1), update that marker item's Status to `Enriched` using the Monday MCP `change_item_column_values` tool.
 
-9. Run `/pm-signal-intelligence:collect-signals --days 30` for a backfill.
+10. Store the objective in Cowork project memory for use during signal collection:
+    - Store: `{ "id": "{objective_id}", "title": "{objective text}", "status": "active", "decomposition": {decomposition JSON} }`
+    - Add to the list of active objectives in project memory.
 
-10. After backfill completes, tell the PM:
+11. Run `/pm-signal-intelligence:collect-signals --days 30` for a backfill.
+
+12. After backfill completes, tell the PM:
     "Your objective '[name]' is now active with a full decomposition. I've run a 30-day backfill and written matches to the Monday board. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
 
 ## Scheduling

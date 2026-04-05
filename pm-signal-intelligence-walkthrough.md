@@ -431,7 +431,11 @@ When asked for instructions:
 Run /pm-signal-intelligence:collect-signals for the past 24 hours.
 ```
 
-This runs every morning when your computer is awake and Claude Desktop is open.
+This runs every morning when your computer is awake and Claude Desktop is open. The daily task is fully autonomous:
+- It automatically discovers new objectives you created in the web app (via Monday board markers).
+- It enriches them with a decomposition (Salesforce context + LLM).
+- It collects signals from all sources and writes matches to the Monday board.
+- No PM interaction is needed after the initial setup.
 
 ---
 
@@ -442,33 +446,30 @@ This runs every morning when your computer is awake and Claude Desktop is open.
 1. Open the web app dashboard.
 2. Click "+ New objective."
 3. Enter a title (e.g., "Identify expansion opportunities in cities where we currently serve only one department").
-4. Copy the objective ID from the URL (e.g., `https://your-app.com/objectives/abc-123-def` → the ID is `abc-123-def`).
 
-### 7.2 Enrich it with the plugin
+That's it. The web app writes a marker to the Monday board so the plugin can discover it.
 
-Back in Cowork, type:
+### 7.2 Enrich it with the plugin (optional — the daily task does this automatically)
+
+If you want to enrich the objective immediately (rather than waiting for the next daily run), open Cowork and type:
 
 ```
 /pm-signal-intelligence:create-objective
 ```
 
-Or describe it directly:
-
-```
-I want to identify expansion opportunities in cities where we currently serve only one department. The objective ID is abc-123-def.
-```
-
 Claude will:
-1. Query Salesforce for your account landscape.
-2. Generate a decomposition (signal types, entities, filters).
-3. Show it to you for review. Edit as needed ("add Hebrew terms for city manager," "include accounts nearing renewal").
-4. Write the decomposition to the Monday board for sync to Supabase.
-5. Store the objective in project memory.
+1. Find your unenriched objective from the Monday board.
+2. Query Salesforce for your account landscape.
+3. Generate a decomposition (signal types, entities, filters).
+4. Show it to you for review. Edit as needed ("add Hebrew terms for city manager," "include accounts nearing renewal").
+5. Write the decomposition to the Monday board for sync to Supabase.
 6. Run a 30-day backfill. This takes a few minutes.
+
+If you skip this step, the next daily scheduled task will automatically discover and enrich the objective — but without PM review of the decomposition.
 
 ### 7.3 Review results
 
-After the backfill, open the web app to review matches. The app shows rescored signals with full triage capabilities (confirm/dismiss). You can also preview results in Cowork:
+After the backfill (or the next daily run), open the web app to review matches. The app shows rescored signals with full triage capabilities (confirm/dismiss). You can also preview results in Cowork:
 
 ```
 /pm-signal-intelligence:review-signals

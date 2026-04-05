@@ -26,7 +26,8 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 **Claude (the Cowork plugin) can ONLY write to the Monday.com board.** Claude cannot read from or write to Supabase directly. All data flows through Monday:
 - Signal matches → Monday board items
 - Objective decompositions → Monday board items with `Source = "objective_decomposition"`
-- The app's sync cron routes these to the correct Supabase tables
+- New objectives created in the web app → Monday board items with `Source = "new_objective"` (auto-discovered by the plugin's daily task)
+- The app's sync cron routes decomposition and signal items to the correct Supabase tables; `new_objective` markers are skipped by sync (they exist for the plugin to discover)
 
 ## Monday.com Board (18407235431)
 
@@ -54,17 +55,21 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 ## Data Flow
 
 ### Signal Collection
-1. Plugin reads from Slack, Salesforce, Gong, Gmail via MCP
-2. Normalizes signals (signal-preprocessing skill)
-3. Matches against objectives (signal-matching skill) with few-shot examples from feedback-learning
-4. Clusters related signals (signal-clustering skill)
-5. Writes items to Monday board
+1. Plugin discovers new unenriched objectives from Monday board (`new_objective` markers)
+2. Plugin reads from Slack, Salesforce, Gong, Gmail via MCP
+3. Normalizes signals (signal-preprocessing skill)
+4. Matches against objectives (signal-matching skill) with few-shot examples from feedback-learning
+5. Clusters related signals (signal-clustering skill)
+6. Writes items to Monday board
 
 ### Objective Creation
 1. PM creates objective in web app (gets Supabase UUID)
-2. Plugin enriches with decomposition (Salesforce context + LLM)
-3. Plugin writes decomposition to Monday with `Source = "objective_decomposition"`
-4. Sync cron detects marker, updates objective's decomposition in Supabase
+2. Web app writes a `new_objective` marker item to Monday board (with PM UUID, Objective ID, title)
+3. Plugin's daily task (or manual `/create-objective`) discovers the marker on Monday
+4. Plugin enriches with decomposition (Salesforce context + LLM)
+5. Plugin writes decomposition to Monday with `Source = "objective_decomposition"`
+6. Plugin updates the `new_objective` marker's Status to `Enriched`
+7. Sync cron detects decomposition item, updates objective's decomposition in Supabase
 
 ### Monday → Supabase Sync (lib/sync-monday.ts)
 1. Fetches items with Status = "Pending"
