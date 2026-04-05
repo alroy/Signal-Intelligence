@@ -40,7 +40,7 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 |---|---|---|
 | PM UUID | `text_mm23fspz` | PM's Supabase user ID |
 | Objective ID | `text_mm23qar7` | Which objective this signal matches |
-| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, `gmail`, or `objective_decomposition` |
+| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, `gmail`, `objective_decomposition`, `new_objective`, or `objective_status_change` |
 | Account | `text_mm23xscc` | Customer account name |
 | Content Summary | `text_mm23eqyw` | English summary of the signal |
 | Original Content | `long_text_mm23wnrf` | Original text (if non-English) |
@@ -55,7 +55,7 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 | Cluster ID | `text_mm247era` | Groups related signals together |
 | Situation Summary | `text_mm24zxe` | 1-sentence cluster summary |
 | Decomposition | `long_text_mm24fq7d` | Objective decomposition JSON (for `objective_decomposition` items only) |
-| Status | `color_mm23b9pc` | `Pending`, `Confirmed`, or `Dismissed` |
+| Status | `color_mm23b9pc` | `Pending`, `Confirmed`, `Dismissed`, or `Enriched` |
 
 ### Gmail as a Data Source
 
@@ -434,7 +434,8 @@ Run /pm-signal-intelligence:collect-signals for the past 24 hours.
 This runs every morning when your computer is awake and Claude Desktop is open. The daily task is fully autonomous:
 - It automatically discovers new objectives you created in the web app (via Monday board markers).
 - It enriches them with a decomposition (Salesforce context + LLM).
-- It collects signals from all sources and writes matches to the Monday board.
+- It discovers objective status changes (pause, resolve, reactivate) and updates accordingly — paused/resolved objectives are skipped.
+- It collects signals from all active objectives and writes matches to the Monday board.
 - No PM interaction is needed after the initial setup.
 
 ---
