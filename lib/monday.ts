@@ -90,7 +90,7 @@ export async function updateSignalStatus(
 export async function createBoardItem(
   boardId: string,
   itemName: string,
-  columnValues: Record<string, string>
+  columnValues: Record<string, unknown>
 ): Promise<string> {
   const query = `
     mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
