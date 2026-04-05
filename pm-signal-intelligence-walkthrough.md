@@ -4,7 +4,7 @@ A step-by-step guide for non-developers. Estimated total time: 45-60 minutes.
 
 By the end of this guide you'll have:
 1. A Supabase project with all database tables.
-2. Google OAuth configured (for the app, later).
+2. Google OAuth configured (for the web app).
 3. Claude Desktop with Slack, Salesforce, Gong, and **Gmail** connected.
 4. The PM Signal Intelligence plugin installed in Cowork.
 5. A shared Monday.com board linked to the signal pipeline.
@@ -25,16 +25,37 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
                      Cron Job (sync-monday)
                               │
                               ▼
-                        Supabase DB
-                              │
+                        Supabase DB  ◀──  Rescore Pipeline (LLM re-evaluation
+                              │            with shared patterns + PM feedback)
                               ▼
                          Web App
                          (Review & Feedback ──▶ syncs back to Monday.com)
 ```
 
-**How it works:** The Cowork plugin collects signals from all data sources (including Gmail threads — matching account domains, summarizing key moments) and writes them to a shared Monday.com board. Each item is tagged with the PM's UUID to differentiate ownership. A cron job periodically syncs pending items from Monday.com into Supabase. When a PM confirms or dismisses a signal in the web app, the feedback is written back to Monday.com so the plugin can see it.
+**How it works:** The Cowork plugin collects signals from all data sources (Slack, Salesforce, Gong, Gmail) and writes them as items on a shared Monday.com board. Each item is tagged with the PM's UUID to differentiate ownership. A cron job periodically syncs pending items from Monday.com into Supabase, creates cluster records for grouped signals, and updates objective decompositions. After sync, a rescore pipeline re-evaluates each match using shared patterns and PM feedback history. When a PM confirms or dismisses a signal in the web app, the feedback is written to Supabase and the status is synced back to Monday.com so the plugin can learn from it.
 
-**Shared Monday board structure:** One board holds signals for all PMs. Key columns: PM UUID, Objective ID, Source, Account, Content Summary, Score, Category, Urgency, Status (Pending / Confirmed / Dismissed).
+**Shared Monday board structure:** One board (ID: `18407235431`) holds signals for all PMs. Columns:
+
+| Column | Column ID | Purpose |
+|---|---|---|
+| PM UUID | `text_mm23fspz` | PM's Supabase user ID |
+| Objective ID | `text_mm23qar7` | Which objective this signal matches |
+| Source | `text_mm238jbc` | `slack`, `salesforce`, `gong`, `gmail`, or `objective_decomposition` |
+| Account | `text_mm23xscc` | Customer account name |
+| Content Summary | `text_mm23eqyw` | English summary of the signal |
+| Original Content | `long_text_mm23wnrf` | Original text (if non-English) |
+| Source Language | `text_mm23f67y` | Detected language code |
+| Speaker Role | `text_mm23vdkn` | `customer`, `internal`, or `system` |
+| Score | `numeric_mm23h4sr` | Relevance score (0-10) |
+| Explanation | `text_mm23983t` | Why this signal matches the objective |
+| Category | `color_mm23tcn7` | `opportunity`, `risk`, or `info` |
+| Urgency | `color_mm23vf2s` | `act_now`, `this_week`, or `background` |
+| Source Reference | `long_text_mm24w82p` | JSON with source type, ID, and deeplink |
+| Source Timestamp | `text_mm242qzh` | ISO 8601 timestamp of original signal |
+| Cluster ID | `text_mm247era` | Groups related signals together |
+| Situation Summary | `text_mm24zxe` | 1-sentence cluster summary |
+| Decomposition | `long_text_mm24fq7d` | Objective decomposition JSON (for `objective_decomposition` items only) |
+| Status | `color_mm23b9pc` | `Pending`, `Confirmed`, or `Dismissed` |
 
 ### Gmail as a Data Source
 
@@ -42,6 +63,19 @@ Gmail is a primary signal source. The plugin:
 - Pulls threads from Gmail via the Gmail connector.
 - Matches account domains against your Salesforce accounts to associate signals with the right customer.
 - Summarizes key moments (renewal discussions, escalation threads, feature requests) and writes them as signal items.
+
+### How Clustering Works
+
+The plugin groups related signals (e.g., a Gong call and a Slack thread about the same event at the same account) by assigning them the same Cluster ID and Situation Summary. During sync, the app creates cluster records in Supabase. The web app displays clustered signals together with the situation summary as a header.
+
+### How the Rescore Pipeline Works
+
+After Monday→Supabase sync, the app re-evaluates each new match using:
+- The objective's decomposition (signal types, entities to watch, relevant accounts)
+- Shared patterns (high-confidence patterns boost scores, low-confidence ones penalize)
+- PM feedback history (5 recent confirmed + 5 recent dismissed examples)
+
+This means the scores shown in the web app may differ from the plugin's original scores on the Monday board.
 
 ---
 
@@ -114,8 +148,10 @@ create table matches (
   category text not null,
   urgency text not null,
   cluster_id uuid references clusters(id),
+  monday_item_id text unique,
   feedback text default 'pending',
   feedback_at timestamptz,
+  rescored_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -179,10 +215,12 @@ create policy "Authenticated PMs insert patterns" on shared_patterns for insert 
 create policy "Authenticated PMs update patterns" on shared_patterns for update using (auth.uid() is not null);
 
 -- Indexes
+create index idx_pm_profiles_email on pm_profiles(email);
 create index idx_objectives_pm on objectives(pm_id, status);
 create index idx_clusters_pm on clusters(pm_id, created_at desc);
 create index idx_matches_objective on matches(objective_id, created_at desc);
 create index idx_matches_pm_feedback on matches(pm_id, feedback);
+create index idx_matches_monday_item_id on matches(monday_item_id) where monday_item_id is not null;
 create index idx_patterns_confidence on shared_patterns(confidence);
 create index idx_feedback_pm on pm_feedback(pm_id, objective_id);
 create index idx_feedback_recent on pm_feedback(pm_id, created_at desc);
@@ -197,12 +235,12 @@ create index idx_feedback_recent on pm_feedback(pm_id, created_at desc);
 2. Click "API."
 3. Save these three values:
    - **Project URL** (e.g., `https://abcdefg.supabase.co`)
-   - **anon public key** (starts with `eyJ...`) — for the app later
-   - **service_role key** (click "Reveal") — for Cowork
+   - **anon public key** (starts with `eyJ...`) — for the web app
+   - **service_role key** (click "Reveal") — for the web app server-side operations
 
 ### 1.5 Configure Google OAuth
 
-Needed for the app's login. Easier to do now while you're here.
+Needed for the web app's login. Easier to do now while you're here.
 
 **In Google Cloud Console (https://console.cloud.google.com):**
 
@@ -248,7 +286,7 @@ Ask a developer on your team to handle this part.
 
 ### If Gong isn't available yet
 
-Skip this. The plugin works with Slack and Salesforce alone. Add Gong later.
+Skip this. The plugin works with Slack, Salesforce, and Gmail alone. Add Gong later.
 
 ---
 
@@ -272,7 +310,13 @@ Go to https://claude.com/download. Install the latest version. You need a Pro or
 
 If Salesforce isn't listed, ask your Salesforce admin about setting up a Salesforce MCP server.
 
-### 3.4 Add Gong (skip if not ready)
+### 3.4 Connect Gmail
+
+1. Settings > Connectors > Gmail > "Connect."
+2. Authorize with your Google account.
+3. Permissions: Read/Search **Allow**, Send/Draft **Block**.
+
+### 3.5 Add Gong (skip if not ready)
 
 1. Settings > Developer > "App Config File." A text file opens.
 2. If empty, replace the contents with:
@@ -300,8 +344,6 @@ If Salesforce isn't listed, ask your Salesforce admin about setting up a Salesfo
 
 ## Part 4: Install the plugin (3 minutes)
 
-This is where previous versions of this guide asked you to maintain a folder on your desktop. That's no longer necessary. The plugin installs properly into Cowork and Claude manages it internally.
-
 ### 4.1 Download the plugin zip
 
 Download `pm-signal-intelligence-plugin.zip`. Do not unzip it. You'll upload the zip directly.
@@ -318,10 +360,11 @@ Download `pm-signal-intelligence-plugin.zip`. Do not unzip it. You'll upload the
 
 ### 4.3 Verify installation
 
-In any Cowork task, type "/" and you should see three new commands:
+In any Cowork task, type "/" and you should see four new commands:
 - `/pm-signal-intelligence:create-objective`
 - `/pm-signal-intelligence:collect-signals`
 - `/pm-signal-intelligence:query`
+- `/pm-signal-intelligence:review-signals`
 
 If they appear, the plugin is installed. You can delete the zip file from your Downloads.
 
@@ -329,7 +372,7 @@ If they appear, the plugin is installed. You can delete the zip file from your D
 
 ## Part 5: Create a Cowork project and configure (5 minutes)
 
-Even though the plugin is installed globally, you need a Cowork project to store your Supabase credentials in project memory.
+The plugin needs a Cowork project to store your PM identity and objectives in project memory.
 
 ### 5.1 Create the project
 
@@ -341,40 +384,36 @@ Even though the plugin is installed globally, you need a Cowork project to store
 ```
 You are a PM Signal Intelligence agent. Use the pm-signal-intelligence plugin for all commands.
 
-You are stateless. Do not create or read local files. All persistent data lives in Supabase.
+You are stateless between sessions. All persistent signal data flows through the Monday.com board. The web app handles Supabase reads/writes.
 
 All outputs must be in English regardless of source language. Preserve original-language excerpts in citations.
 
-Write matches and objectives to Supabase via REST API using the service role key. Read objectives, patterns, and feedback from Supabase.
-
-After collecting signals or creating an objective, tell me to open the app to review. Until the app is built, show top results in our conversation.
+Write signal matches to the shared Monday.com board. Write objective decompositions to the Monday board with Source = "objective_decomposition". The web app's sync cron handles everything else.
 ```
 
 5. Click "Create."
 
-### 5.2 Configure Supabase access
+### 5.2 Configure your PM identity
 
 Open a task in the project and type:
 
 ```
-Configure Supabase access.
+Store my PM configuration.
 
-Supabase URL: [paste your URL]
-Service role key: [paste your service role key]
-My PM ID: [use your email for now, e.g., gil@zencity.io — will switch to UUID when the app is ready]
+My PM UUID: [paste your Supabase user UUID]
 ```
 
-Claude stores these in project memory. They persist across all tasks in this project.
+Claude stores this in project memory. It's used to tag Monday board items with your identity.
 
 ### 5.3 Verify everything works
 
 Type:
 
 ```
-Check which connectors are available. Tell me how many Slack channels you can see, whether Salesforce is connected, and whether Gong is available. Then try reading from Supabase — fetch all objectives for my PM ID.
+Check which connectors are available. Tell me how many Slack channels you can see, whether Salesforce is connected, whether Gmail is connected, and whether Gong is available.
 ```
 
-Claude should confirm access to each source and return an empty objectives list from Supabase (since you haven't created any yet).
+Claude should confirm access to each connected source.
 
 ---
 
@@ -398,7 +437,16 @@ This runs every morning when your computer is awake and Claude Desktop is open.
 
 ## Part 7: Create your first objective (10 minutes)
 
-Type:
+### 7.1 Create the objective in the web app
+
+1. Open the web app dashboard.
+2. Click "+ New objective."
+3. Enter a title (e.g., "Identify expansion opportunities in cities where we currently serve only one department").
+4. Copy the objective ID from the URL (e.g., `https://your-app.com/objectives/abc-123-def` → the ID is `abc-123-def`).
+
+### 7.2 Enrich it with the plugin
+
+Back in Cowork, type:
 
 ```
 /pm-signal-intelligence:create-objective
@@ -407,47 +455,47 @@ Type:
 Or describe it directly:
 
 ```
-I want to identify expansion opportunities in cities where we currently serve only one department.
+I want to identify expansion opportunities in cities where we currently serve only one department. The objective ID is abc-123-def.
 ```
 
 Claude will:
 1. Query Salesforce for your account landscape.
 2. Generate a decomposition (signal types, entities, filters).
 3. Show it to you for review. Edit as needed ("add Hebrew terms for city manager," "include accounts nearing renewal").
-4. Write the objective to Supabase.
-5. Run a 30-day backfill. This takes a few minutes.
-6. Show the top matches.
+4. Write the decomposition to the Monday board for sync to Supabase.
+5. Store the objective in project memory.
+6. Run a 30-day backfill. This takes a few minutes.
 
-Review the results and provide feedback:
+### 7.3 Review results
+
+After the backfill, open the web app to review matches. The app shows rescored signals with full triage capabilities (confirm/dismiss). You can also preview results in Cowork:
 
 ```
-Confirm signals 1, 3, 5. Dismiss 2, 4.
+/pm-signal-intelligence:review-signals
 ```
 
-Claude writes this feedback to Supabase. Your next collection run will benefit from it.
+For full feedback that powers the learning loop, use the web app — confirm/dismiss actions there write to Supabase and sync back to Monday so the plugin can learn from your preferences.
 
 ---
 
 ## What happens next
 
-Your signal collection pipeline is running. Every morning, Claude collects new signals and writes matches to Supabase.
+Your signal collection pipeline is running. Every morning, Claude collects new signals and writes matches to the Monday board. The app syncs them to Supabase and rescores them.
 
-Until the app is built, you can:
-- Ask questions: "What have customers said about reporting this month?"
-- Check new signals: "Show me today's matches."
-- Create more objectives: `/pm-signal-intelligence:create-objective`
-- Provide feedback: "Confirm signal 2, dismiss signal 5."
-
-Once the app is ready, it reads from the same Supabase database and gives you the proper interface with one-click confirm/dismiss, digests, trend charts, and shared patterns.
+You can:
+- **Ask questions:** "What have customers said about reporting this month?" (`/pm-signal-intelligence:query`)
+- **Review new signals:** `/pm-signal-intelligence:review-signals` (quick view) or use the web app (full triage)
+- **Create more objectives:** Create in the web app, then enrich with `/pm-signal-intelligence:create-objective`
+- **Provide feedback:** Confirm/dismiss signals in the web app to improve future scoring
 
 ---
 
 ## Daily workflow (once everything is set up)
 
 1. Make sure Claude Desktop is open by the time your scheduled task runs.
-2. Open the app (when ready) to review new matches. Until then, ask Claude in Cowork.
-3. Confirm or dismiss a few signals daily.
-4. Check the weekly digest for summaries and suggestions.
+2. Open the web app to review new matches. Confirm or dismiss a few signals daily.
+3. Ask Claude questions as needed: "Summarize everything we know about City of Durham."
+4. Periodically create new objectives as your strategy evolves.
 
 ---
 
@@ -460,8 +508,8 @@ Once the app is ready, it reads from the same Supabase database and gives you th
 | Supabase project | Create project, run SQL, get API keys | 10 min |
 | Google OAuth | Configure in Google Cloud + Supabase | 5 min |
 | Gong MCP server | Build and test (needs developer) | 15 min |
-| Slack channel | Create #pm-signal-intelligence | 1 min |
-| Deploy app | When ready (separate effort) | varies |
+| Monday.com board | Board is pre-configured (ID: `18407235431`) | 0 min |
+| Deploy web app | Deploy to Vercel (separate effort) | varies |
 
 ### Done by each PM
 
@@ -469,11 +517,11 @@ Once the app is ready, it reads from the same Supabase database and gives you th
 |------|------|------|
 | Install plugin | Upload zip in Cowork Customize | 2 min |
 | Create project | New project with instructions | 3 min |
-| Configure Supabase | Provide URL, key, PM ID | 2 min |
-| Enable connectors | Slack, Salesforce, Gong | 5 min |
+| Configure PM identity | Provide PM UUID | 1 min |
+| Enable connectors | Slack, Salesforce, Gmail, Gong | 5 min |
 | Schedule collection | Daily at 7 AM | 1 min |
-| First objective | Create, review, backfill | 10 min |
-| Calibration | Confirm/dismiss backfill signals | 5 min |
+| First objective | Create in web app, enrich with plugin, backfill | 10 min |
+| Calibration | Confirm/dismiss signals in the web app | 5 min |
 
 Total per PM: approximately 30 minutes, most of which produces visible results.
 
@@ -489,8 +537,12 @@ Total per PM: approximately 30 minutes, most of which produces visible results.
 
 **Salesforce returns empty.** Custom field names may differ from what the plugin expects. Tell Claude the correct field names.
 
-**Supabase writes failing.** Verify URL and service role key in project memory. Check tables exist (Table Editor in Supabase dashboard).
+**Monday board writes failing.** Verify that the Monday MCP server is connected and has write access to board `18407235431`.
 
-**Claude forgets Supabase config.** Make sure you're working inside the "PM Signal Intelligence" project, not a standalone Cowork task. Memory is project-scoped.
+**Signals not appearing in the web app.** The sync cron runs periodically. You can trigger a manual sync from the dashboard. Check that items have Status = "Pending" on the Monday board.
 
-**"No active objectives found."** You need to create at least one objective first: `/pm-signal-intelligence:create-objective`.
+**Scores differ between Monday board and web app.** This is expected. The app rescores matches using shared patterns and PM feedback. The Monday board shows the plugin's original scores.
+
+**Claude forgets your PM UUID.** Make sure you're working inside the "PM Signal Intelligence" project, not a standalone Cowork task. Memory is project-scoped.
+
+**"No active objectives found."** You need to create at least one objective: first in the web app dashboard, then enrich it with `/pm-signal-intelligence:create-objective`.
