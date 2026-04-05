@@ -9,6 +9,14 @@ const sourceLogos: Record<string, { src: string; alt: string }> = {
   monday: { src: "/monday.svg", alt: "Monday" },
 };
 
+const sourceLabels: Record<string, string> = {
+  slack: "Slack",
+  salesforce: "Salesforce",
+  gong: "Gong",
+  gmail: "Gmail",
+  monday: "Monday",
+};
+
 const categoryColors: Record<string, string> = {
   opportunity: "bg-blue-100 text-blue-800",
   risk: "bg-red-100 text-red-800",
@@ -22,17 +30,40 @@ const urgencyColors: Record<string, string> = {
 };
 
 export function MatchItem({ match }: { match: MatchWithCluster }) {
+  const deeplink =
+    typeof match.source_reference?.deeplink === "string"
+      ? match.source_reference.deeplink
+      : null;
+
+  const sourceIcon = sourceLogos[match.source] ? (
+    <img
+      src={sourceLogos[match.source].src}
+      alt={sourceLogos[match.source].alt}
+      className="h-4 w-4 shrink-0"
+    />
+  ) : null;
+
+  const sourceLabel = sourceLabels[match.source] || match.source;
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
-            {sourceLogos[match.source] ? (
-              <img
-                src={sourceLogos[match.source].src}
-                alt={sourceLogos[match.source].alt}
-                className="h-4 w-4 shrink-0"
-              />
+            {deeplink ? (
+              <a
+                href={deeplink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                {sourceIcon}
+                <span className="text-xs font-medium">
+                  View in {sourceLabel}
+                </span>
+              </a>
+            ) : sourceIcon ? (
+              sourceIcon
             ) : (
               <span className="text-xs font-medium text-gray-400">
                 {match.source}
