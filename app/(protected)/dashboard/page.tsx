@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
 import { CreateObjectiveForm } from "@/components/dashboard/create-objective-form";
+import { SyncButton } from "@/components/dashboard/sync-button";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -64,7 +65,10 @@ export default async function DashboardPage() {
             Welcome back, {profile?.name || profile?.email}
           </p>
         </div>
-        <CreateObjectiveForm />
+        <div className="flex items-center gap-3">
+          <SyncButton />
+          <CreateObjectiveForm />
+        </div>
       </div>
 
       {objectivesWithCounts.length > 0 ? (
