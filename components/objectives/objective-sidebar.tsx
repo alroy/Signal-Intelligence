@@ -40,15 +40,10 @@ export function ObjectiveSidebar({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-medium text-gray-500">Status</h3>
-        <div className="mt-2">
-          <StatusToggle
-            objectiveId={objective.id}
-            currentStatus={objective.status}
-          />
-        </div>
-      </div>
+      <StatusToggle
+        objectiveId={objective.id}
+        currentStatus={objective.status}
+      />
 
       <div>
         <h3 className="text-sm font-medium text-gray-500">Match Stats</h3>

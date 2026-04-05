@@ -7,11 +7,11 @@ import {
   resolveObjective,
 } from "@/app/actions/feedback";
 
-const segments = [
-  { value: "active", label: "Active", color: "bg-green-100 text-green-800 ring-green-300" },
-  { value: "paused", label: "Paused", color: "bg-amber-100 text-amber-800 ring-amber-300" },
-  { value: "resolved", label: "Resolved", color: "bg-gray-100 text-gray-600 ring-gray-300" },
-] as const;
+const badgeStyles: Record<string, { dot: string; text: string; bg: string }> = {
+  active: { dot: "bg-green-500", text: "text-green-800", bg: "bg-green-50" },
+  paused: { dot: "bg-amber-500", text: "text-amber-800", bg: "bg-amber-50" },
+  resolved: { dot: "bg-gray-400", text: "text-gray-600", bg: "bg-gray-100" },
+};
 
 export function StatusToggle({
   objectiveId,
@@ -33,19 +33,18 @@ export function StatusToggle({
     }
   }, [showResolveModal]);
 
-  function handleSelect(value: string) {
-    if (value === currentStatus || isPending) return;
-
-    if (value === "resolved") {
-      setShowResolveModal(true);
-      return;
-    }
-
+  function handleToggle() {
+    if (isPending) return;
+    const next = currentStatus === "active" ? "paused" : "active";
     startTransition(async () => {
-      await updateObjectiveStatus(
-        objectiveId,
-        value as "active" | "paused"
-      );
+      await updateObjectiveStatus(objectiveId, next);
+    });
+  }
+
+  function handleReactivate() {
+    if (isPending) return;
+    startTransition(async () => {
+      await updateObjectiveStatus(objectiveId, "active");
     });
   }
 
@@ -62,28 +61,68 @@ export function StatusToggle({
     });
   }
 
+  const badge = badgeStyles[currentStatus] || badgeStyles.active;
+
   return (
     <>
-      <div className="flex w-full rounded-lg bg-gray-100 p-0.5">
-        {segments.map((seg) => {
-          const isActive = seg.value === currentStatus;
-          return (
+      <div className="space-y-3">
+        {/* Status badge */}
+        <div
+          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${badge.bg} ${badge.text}`}
+        >
+          <span className={`h-2 w-2 rounded-full ${badge.dot}`} />
+          <span className="capitalize">{currentStatus}</span>
+        </div>
+
+        {currentStatus === "resolved" ? (
+          /* Resolved: show re-activate link */
+          <button
+            onClick={handleReactivate}
+            disabled={isPending}
+            className="block text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
+          >
+            {isPending ? "Reactivating\u2026" : "Re-activate objective"}
+          </button>
+        ) : (
+          /* Active or Paused: show action buttons */
+          <div className="space-y-2">
             <button
-              key={seg.value}
-              onClick={() => handleSelect(seg.value)}
-              disabled={isPending || (currentStatus === "resolved" && seg.value !== "resolved")}
-              className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${
-                isActive
-                  ? `${seg.color} shadow-sm ring-1`
-                  : "text-gray-500 hover:text-gray-700"
-              } disabled:opacity-50`}
+              onClick={handleToggle}
+              disabled={isPending}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
-              {seg.label}
+              {currentStatus === "active" ? (
+                <>
+                  {/* Pause icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                  {isPending ? "Pausing\u2026" : "Pause Collection"}
+                </>
+              ) : (
+                <>
+                  {/* Play icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  {isPending ? "Resuming\u2026" : "Resume Monitoring"}
+                </>
+              )}
             </button>
-          );
-        })}
+
+            <button
+              onClick={() => setShowResolveModal(true)}
+              disabled={isPending}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Resolve Objective
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Resolve confirmation modal */}
       {showResolveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
