@@ -8,8 +8,8 @@ description: Groups individual matches into cohesive "Situations" or "Events." T
 Run this skill after `signal-matching` has identified relevant signals, but before the final write to the Monday.com board.
 
 ### 1. Grouping Parameters
-* **Primary Anchor:** `account_id`. Signals must belong to the same account to be clustered.
-* **Temporal Window:** 72 hours. Signals occurring more than 3 days apart should generally remain separate unless a direct semantic link is found.
+* **Primary Anchor:** `account`. Signals must belong to the same account to be clustered.
+* **Temporal Window:** 72 hours. Use `source_timestamp` to compare signal timing. Signals occurring more than 3 days apart should generally remain separate unless a direct semantic link is found.
 * **Cross-Source Affinity:** Prioritize clustering a "Customer Statement" (Gong) with an "Internal Discussion" (Slack) if they share the same entities.
 
 ### 2. LLM Evaluation Criteria
@@ -23,6 +23,8 @@ For every cluster identified, generate:
 * **cluster_id:** A unique UUID shared by all matches in the group.
 * **Situation Summary:** A 1-sentence English summary of the combined event (e.g., "Coordinated push for Enterprise upgrade following Miami-Dade Q3 budget surplus announcement").
 * **Combined Urgency:** The highest urgency score among all signals in the cluster.
+
+When writing clustered matches to the Monday.com board via `collect-signals`, set both the `Cluster ID` column (`text_mm247era`) and the `Situation Summary` column (`text_mm24zxe`) on every item in the cluster. The app's sync process will use these to create proper cluster records in Supabase and display them in the web app.
 
 ## B2G Specific Scenarios
 

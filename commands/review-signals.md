@@ -14,12 +14,12 @@ The PM wants to review recent matches, e.g.:
 
 1. Read recent items from the Monday.com board using the Monday MCP server:
    - **Board ID**: `18407235431`
-   - Filter by PM UUID column matching the current PM.
-   - Optionally filter by objective if the PM specifies one.
+   - Filter by PM UUID column (`text_mm23fspz`) matching the current PM.
+   - Optionally filter by objective if the PM specifies one (`text_mm23qar7`).
    - Sort by score descending.
 
 2. Group matches for display:
-   - If matches share a `cluster_id`, show a cluster header with individual matches nested below.
+   - If matches share a `Cluster ID` (`text_mm247era`), show the `Situation Summary` (`text_mm24zxe`) as a header with individual matches nested below.
    - Unclustered matches appear individually.
    - Within each group, sort by score descending.
 
@@ -29,11 +29,12 @@ The PM wants to review recent matches, e.g.:
    - Source and account
    - Content summary
    - Explanation of why it matched
+   - Source deeplink if available (from `Source Reference` column)
 
 4. Let the PM discuss relevance. If the PM indicates a match is not useful, note their preference for future collection runs.
 
 ## Notes
 
 - This command reads from the Monday.com board. It does not access Supabase directly.
-- For full triage with confirm/dismiss feedback, the PM should use the web app dashboard, which writes feedback to Supabase and powers the learning loop.
+- **Scores shown are the plugin's original scores** (pre-rescore). The web app may show different scores after the app's rescoring pipeline runs. For the most accurate scores and full triage with confirm/dismiss feedback, the PM should use the web app dashboard.
 - If there are no recent items, say: "No new matches on the board. Run /pm-signal-intelligence:collect-signals to check for fresh signals."

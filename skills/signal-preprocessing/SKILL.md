@@ -19,12 +19,13 @@ Every signal, regardless of source, should be normalized to this structure befor
   "source_reference": {
     "type": "slack_message | salesforce_record | gong_call | gmail_thread",
     "id": "source-specific ID",
-    "deeplink": "URL to the specific message, record, or call moment",
-    "timestamp_in_source": "for Gong: seconds into the recording"
+    "deeplink": "URL to the specific message, record, or call moment"
   },
   "raw_context": "surrounding 2-3 messages or paragraphs for context"
 }
 ```
+
+**Monday board mapping:** The `source_reference` object is written as a JSON string to the `Source Reference` column (`long_text_mm24w82p`). The `timestamp` is written to the `Source Timestamp` column (`text_mm242qzh`). Both are synced to Supabase by the web app.
 
 ## Slack rules
 
@@ -62,7 +63,7 @@ Every signal, regardless of source, should be normalized to this structure befor
 4. Create one signal per key moment (not one per call).
 5. `speaker_role` = "customer" for customer statements, "internal" for rep statements.
 6. Generate an English summary for each key moment even if the call was in another language.
-7. Include a deeplink to the Gong recording at the specific timestamp.
+7. Include a deeplink to the Gong recording at the specific timestamp. Store the timestamp (seconds into recording) in the `source_reference.id` field as `{call_id}:{seconds}`.
 
 ## Gmail rules
 

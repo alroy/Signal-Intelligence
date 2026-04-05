@@ -16,10 +16,23 @@ const MONDAY_COLUMNS = {
   explanation: "text_mm23983t",
   category: "color_mm23tcn7",
   urgency: "color_mm23vf2s",
+  source_reference: "long_text_mm24w82p",
+  source_timestamp: "text_mm242qzh",
+  cluster_id: "text_mm247era",
+  situation_summary: "text_mm24zxe",
 } as const;
 
 function getColumnText(item: MondayItem, columnId: string): string {
   return item.column_values.find((c) => c.id === columnId)?.text ?? "";
+}
+
+function parseSourceReference(text: string): Record<string, unknown> | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 function mapItemToMatch(item: MondayItem) {
@@ -28,11 +41,13 @@ function mapItemToMatch(item: MondayItem) {
     pm_id: getColumnText(item, MONDAY_COLUMNS.pm_uuid),
     objective_id: getColumnText(item, MONDAY_COLUMNS.objective_id),
     source: getColumnText(item, MONDAY_COLUMNS.source) || "monday",
+    source_timestamp: getColumnText(item, MONDAY_COLUMNS.source_timestamp) || null,
     account: getColumnText(item, MONDAY_COLUMNS.account) || null,
     content_summary: getColumnText(item, MONDAY_COLUMNS.content_summary) || item.name,
     original_content: getColumnText(item, MONDAY_COLUMNS.original_content) || null,
     source_language: getColumnText(item, MONDAY_COLUMNS.source_language) || "en",
     speaker_role: getColumnText(item, MONDAY_COLUMNS.speaker_role) || null,
+    source_reference: parseSourceReference(getColumnText(item, MONDAY_COLUMNS.source_reference)),
     relevance_score: parseFloat(getColumnText(item, MONDAY_COLUMNS.score)) || 0,
     explanation: getColumnText(item, MONDAY_COLUMNS.explanation) || "",
     category: getColumnText(item, MONDAY_COLUMNS.category) || "info",
@@ -41,8 +56,47 @@ function mapItemToMatch(item: MondayItem) {
   };
 }
 
+interface ClusterGroup {
+  cluster_id: string;
+  pm_id: string;
+  account: string | null;
+  situation_summary: string;
+  combined_urgency: string;
+  items: MondayItem[];
+}
+
+function groupItemsByClusters(items: MondayItem[]): {
+  clustered: ClusterGroup[];
+  unclustered: MondayItem[];
+} {
+  const clusterMap = new Map<string, ClusterGroup>();
+  const unclustered: MondayItem[] = [];
+
+  for (const item of items) {
+    const clusterId = getColumnText(item, MONDAY_COLUMNS.cluster_id);
+    if (!clusterId) {
+      unclustered.push(item);
+      continue;
+    }
+
+    if (!clusterMap.has(clusterId)) {
+      clusterMap.set(clusterId, {
+        cluster_id: clusterId,
+        pm_id: getColumnText(item, MONDAY_COLUMNS.pm_uuid),
+        account: getColumnText(item, MONDAY_COLUMNS.account) || null,
+        situation_summary: getColumnText(item, MONDAY_COLUMNS.situation_summary) || "",
+        combined_urgency: getColumnText(item, MONDAY_COLUMNS.urgency) || "background",
+        items: [],
+      });
+    }
+    clusterMap.get(clusterId)!.items.push(item);
+  }
+
+  return { clustered: Array.from(clusterMap.values()), unclustered };
+}
+
 export async function syncMondaySignals(): Promise<
-  { success: true; synced: number; rescored: number } | { error: string }
+  { success: true; synced: number; clusters_created: number; rescored: number } | { error: string }
 > {
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!boardId) {
@@ -52,12 +106,55 @@ export async function syncMondaySignals(): Promise<
   const items = await fetchPendingSignals(boardId);
 
   if (items.length === 0) {
-    return { success: true, synced: 0, rescored: 0 };
+    return { success: true, synced: 0, clusters_created: 0, rescored: 0 };
   }
 
-  const rows = items.map(mapItemToMatch);
-
   const supabase = createAdminClient();
+
+  // Group items by cluster
+  const { clustered, unclustered } = groupItemsByClusters(items);
+
+  // Step 1: Create cluster records in Supabase and map plugin cluster IDs to Supabase UUIDs
+  const clusterIdMap = new Map<string, string>();
+
+  for (const group of clustered) {
+    // Calculate combined urgency as the highest among all items
+    const urgencyOrder = ["act_now", "this_week", "background"];
+    const combinedUrgency = group.items.reduce((highest, item) => {
+      const itemUrgency = getColumnText(item, MONDAY_COLUMNS.urgency) || "background";
+      return urgencyOrder.indexOf(itemUrgency) < urgencyOrder.indexOf(highest)
+        ? itemUrgency
+        : highest;
+    }, "background");
+
+    const { data: cluster, error: clusterError } = await supabase
+      .from("clusters")
+      .insert({
+        pm_id: group.pm_id,
+        account: group.account,
+        situation_summary: group.situation_summary || "Clustered signals",
+        combined_urgency: combinedUrgency,
+      })
+      .select("id")
+      .single();
+
+    if (clusterError || !cluster) {
+      continue;
+    }
+
+    clusterIdMap.set(group.cluster_id, cluster.id);
+  }
+
+  // Step 2: Map all items to match rows, resolving cluster IDs
+  const allItems = [...unclustered, ...clustered.flatMap((g) => g.items)];
+  const rows = allItems.map((item) => {
+    const match = mapItemToMatch(item);
+    const pluginClusterId = getColumnText(item, MONDAY_COLUMNS.cluster_id);
+    return {
+      ...match,
+      cluster_id: pluginClusterId ? clusterIdMap.get(pluginClusterId) ?? null : null,
+    };
+  });
 
   const { data, error } = await supabase
     .from("matches")
@@ -71,5 +168,5 @@ export async function syncMondaySignals(): Promise<
   // Re-score synced matches using shared patterns + PM feedback history
   const { rescored } = await rescoreNewMatches();
 
-  return { success: true, synced: data.length, rescored };
+  return { success: true, synced: data.length, clusters_created: clusterIdMap.size, rescored };
 }

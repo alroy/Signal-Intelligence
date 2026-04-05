@@ -65,6 +65,12 @@ The web app writes feedback status ("Confirmed" or "Dismissed") back to the Mond
 | Category | `color_mm23tcn7` | Few-shot example metadata |
 | Status | `color_mm23b9pc` | Confirmed / Dismissed / Pending |
 
+## Important: Score values
+
+The scores on the Monday board are the plugin's **original scores** (pre-rescore). The app rescores matches after sync using shared patterns and PM feedback history, but those rescored values stay in Supabase only — they are not written back to Monday.
+
+This means threshold calibration is based on the plugin's scoring accuracy, which is the correct behavior: the plugin learns to produce better initial scores over time. However, PM confirm/dismiss decisions may be influenced by the rescored values they see in the web app, which can differ from the original scores.
+
 ## Notes
 
 - If fewer than 10 total reviewed items exist, skip threshold calibration and use a default minimum score of 5.
