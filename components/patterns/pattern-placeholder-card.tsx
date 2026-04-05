@@ -1,20 +1,27 @@
 export function PatternPlaceholderCard() {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white p-6">
-      <svg
-        className="h-5 w-5 text-gray-400"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 3l1.91 5.79L20 10.5l-4.91 2.71L12 21l-2.09-7.79L5 10.5l4.91-1.71z" />
-      </svg>
-      <span className="text-sm font-medium text-gray-400">
-        Waiting for feedback...
-      </span>
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      {/* Skeleton description line */}
+      <div className="space-y-1.5">
+        <div className="h-3 w-4/5 rounded bg-gray-100" />
+        <div className="h-3 w-3/5 rounded bg-gray-100" />
+      </div>
+      {/* Skeleton meta row mimicking source badge + confidence bar */}
+      <div className="mt-3 flex items-center gap-3">
+        <div className="h-5 w-16 rounded-full bg-gray-100" />
+        <div className="h-1.5 w-16 rounded-full bg-gray-100" />
+        <div className="h-3 w-6 rounded bg-gray-100" />
+      </div>
+      {/* Status message */}
+      <div className="mt-4 border-t border-gray-100 pt-3">
+        <p className="text-xs font-medium text-gray-400">
+          AI is observing feedback...
+        </p>
+        <p className="mt-0.5 text-xs text-gray-400">
+          Patterns emerge automatically once enough signals have been confirmed
+          or dismissed across the team.
+        </p>
+      </div>
     </div>
   );
 }
