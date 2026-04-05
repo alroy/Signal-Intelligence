@@ -21,5 +21,6 @@ export async function triggerMondaySync() {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/objectives/[id]", "page");
   return result;
 }
