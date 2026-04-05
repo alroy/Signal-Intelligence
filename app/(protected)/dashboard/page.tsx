@@ -60,7 +60,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <h2 className="text-2xl font-bold">My Objectives</h2>
           <p className="mt-1 text-gray-600">
             Welcome back, {profile?.name || profile?.email}
           </p>
