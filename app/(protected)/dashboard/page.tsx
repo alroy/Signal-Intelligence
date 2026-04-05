@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
-import { CreateObjectiveForm } from "@/components/dashboard/create-objective-form";
+import { NewObjectiveCard } from "@/components/dashboard/new-objective-card";
 import { SyncButton } from "@/components/dashboard/sync-button";
 
 export default async function DashboardPage() {
@@ -56,6 +56,8 @@ export default async function DashboardPage() {
     };
   });
 
+  const hasObjectives = objectivesWithCounts.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -65,14 +67,12 @@ export default async function DashboardPage() {
             Welcome back, {profile?.name || profile?.email}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <SyncButton />
-          <CreateObjectiveForm />
-        </div>
+        <SyncButton />
       </div>
 
-      {objectivesWithCounts.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {hasObjectives ? (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <NewObjectiveCard />
           {objectivesWithCounts.map(
             ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
               <ObjectiveCard
@@ -87,16 +87,16 @@ export default async function DashboardPage() {
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900">
-            No active objectives
-          </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Your objectives will appear here once created.
+        <div className="flex flex-col items-center gap-4 py-16">
+          <div className="w-full max-w-sm">
+            <NewObjectiveCard />
+          </div>
+          <p className="max-w-md text-center text-sm text-gray-500">
+            Define your first strategic objective to start monitoring signals
+            from Slack, Salesforce, Gong, and Gmail.
           </p>
         </div>
       )}
-
     </div>
   );
 }
