@@ -6,7 +6,7 @@ This guide walks you through setting everything up. You'll need about **20 minut
 
 **What you'll set up:**
 
-- [ ] Claude Desktop connected to Slack, Salesforce, Gmail, and optionally Gong
+- [ ] Claude Desktop connected to Slack, Salesforce, Gmail, and Gong
 - [ ] The PM Signal Intelligence plugin installed
 - [ ] A Cowork project configured with your identity
 - [ ] A daily schedule that collects signals automatically
@@ -14,8 +14,8 @@ This guide walks you through setting everything up. You'll need about **20 minut
 
 **Prerequisites:**
 
-- A Claude Desktop Pro or Max plan ([download here](https://claude.com/download))
-- An account on the PM Signal Intelligence web app (ask your admin for an invite)
+- Claude Desktop with a Pro or Max plan
+- A Zencity email address (any Zencity employee can log in to the web app with their business email)
 - Access to your company's Slack, Salesforce, and Gmail
 
 ---
@@ -41,8 +41,6 @@ Open Claude Desktop and go to **Settings > Connectors**. You'll connect each dat
    - Query / Read: **Allow**
    - Create / Update: **Block**
 
-> If Salesforce doesn't appear in the connector list, ask your Salesforce admin about setting up a Salesforce MCP server.
-
 ### Gmail
 
 1. Click **Gmail > "Connect."**
@@ -51,11 +49,9 @@ Open Claude Desktop and go to **Settings > Connectors**. You'll connect each dat
    - Read / Search: **Allow**
    - Send / Draft: **Block**
 
-### Gong (optional)
+### Gong
 
-Gong requires an MCP server that a developer on your team sets up. If it's already configured, it will appear under **Settings > Connectors** as "gong" — set all tools to **Allow**.
-
-If Gong isn't set up yet, skip this step. The plugin works with Slack, Salesforce, and Gmail alone. You can add Gong later.
+Gong requires a dedicated MCP server to be installed. The MCP server is not yet available, but the plugin already supports Gong and will start collecting call insights as soon as the MCP server is set up. No action needed from you on this step right now — you'll be notified when Gong integration is ready.
 
 ---
 
@@ -91,13 +87,27 @@ The plugin needs a dedicated project to remember your identity and objectives be
 4. In the **Instructions** field, paste:
 
 ```
-You are a PM Signal Intelligence agent. Use the pm-signal-intelligence plugin for all commands.
+Run /pm-signal-intelligence:collect-signals for the past 24 hours.
 
-You are stateless between sessions. All persistent signal data flows through the Monday.com board. The web app handles Supabase reads/writes.
+This is an autonomous daily task. Do not ask questions or wait for user input.
 
-All outputs must be in English regardless of source language. Preserve original-language excerpts in citations.
+Before collecting signals, read ALL items from Monday.com board 18407235431 using the Monday MCP server. Look for any item where the Source column (text_mm238jbc) has the value "new_objective" and the Status column (color_mm23b9pc) shows "Pending". Match against my PM UUID in column text_mm23fspz.
 
-Write signal matches to the shared Monday.com board. Write objective decompositions to the Monday board with Source = "objective_decomposition". The web app's sync cron handles everything else.
+For each new_objective item found:
+1. Read the Objective ID from column text_mm23qar7 and the item name (the objective title).
+2. Query Salesforce for an account landscape summary.
+3. Run the objective-decomposition skill to generate a decomposition.
+4. Write the decomposition to Monday as a new item with Source = "objective_decomposition" in column text_mm238jbc, the Objective ID in text_mm23qar7, PM UUID in text_mm23fspz, and the decomposition JSON in long_text_mm24fq7d. Set Status to Pending.
+5. Update the original new_objective item's Status to "Enriched".
+6. Store the objective in project memory with its ID, title, and decomposition.
+
+Then proceed with the full signal collection pipeline across all active objectives in project memory.
+
+Log a summary at the end: how many new objectives were enriched, how many signals collected, how many matches written, how many clusters formed.
+
+If no active objectives exist in project memory and no new_objective items are found, log "No active objectives. Create one in the web app." and stop.
+
+If a data source is unavailable, continue with the remaining sources.
 ```
 
 5. Click **Create**.
@@ -111,8 +121,8 @@ The plugin tags every signal it finds with your unique PM identifier. You need t
 ### Find your UUID
 
 1. Open the **PM Signal Intelligence web app** in your browser.
-2. Click **Settings** in the sidebar.
-3. Under **Cowork Plugin Configuration**, you'll see your UUID — a long string of letters and numbers that looks like `a1b2c3d4-e5f6-7890-abcd-ef1234567890`.
+2. Go to the app's **Settings** page.
+3. Under **Cowork Plugin Configuration**, you'll see your UUID.
 4. Click the **copy button** next to it.
 
 ### Tell the plugin
@@ -138,13 +148,7 @@ Still inside the project, type:
 /schedule "Daily signal collection" every day at 7:00 AM
 ```
 
-When Claude asks for instructions, enter:
-
-```
-Run /pm-signal-intelligence:collect-signals for the past 24 hours.
-```
-
-That's it. Every morning, the plugin will automatically:
+The project instructions you pasted in Step 3 already tell Claude exactly what to do during each daily run. Every morning, the plugin will automatically:
 
 - Discover any new objectives you've created in the web app
 - Enrich new objectives with a decomposition (signal types, entities to watch, Salesforce filters)
