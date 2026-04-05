@@ -20,6 +20,7 @@ const MONDAY_COLUMNS = {
   source_timestamp: "text_mm242qzh",
   cluster_id: "text_mm247era",
   situation_summary: "text_mm24zxe",
+  decomposition: "long_text_mm24fq7d",
 } as const;
 
 function getColumnText(item: MondayItem, columnId: string): string {
@@ -95,8 +96,21 @@ function groupItemsByClusters(items: MondayItem[]): {
   return { clustered: Array.from(clusterMap.values()), unclustered };
 }
 
+function isDecompositionItem(item: MondayItem): boolean {
+  return getColumnText(item, MONDAY_COLUMNS.source) === "objective_decomposition";
+}
+
+function parseDecomposition(text: string): Record<string, unknown> | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export async function syncMondaySignals(): Promise<
-  { success: true; synced: number; clusters_created: number; rescored: number } | { error: string }
+  { success: true; synced: number; clusters_created: number; objectives_updated: number; rescored: number } | { error: string }
 > {
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!boardId) {
@@ -106,13 +120,41 @@ export async function syncMondaySignals(): Promise<
   const items = await fetchPendingSignals(boardId);
 
   if (items.length === 0) {
-    return { success: true, synced: 0, clusters_created: 0, rescored: 0 };
+    return { success: true, synced: 0, clusters_created: 0, objectives_updated: 0, rescored: 0 };
   }
 
   const supabase = createAdminClient();
 
-  // Group items by cluster
-  const { clustered, unclustered } = groupItemsByClusters(items);
+  // Separate decomposition items from signal items
+  const decompositionItems = items.filter(isDecompositionItem);
+  const signalItems = items.filter((item) => !isDecompositionItem(item));
+
+  // Process objective decomposition updates
+  let objectivesUpdated = 0;
+  for (const item of decompositionItems) {
+    const objectiveId = getColumnText(item, MONDAY_COLUMNS.objective_id);
+    const decomposition = parseDecomposition(
+      getColumnText(item, MONDAY_COLUMNS.decomposition)
+    );
+
+    if (objectiveId && decomposition) {
+      const { error } = await supabase
+        .from("objectives")
+        .update({ decomposition })
+        .eq("id", objectiveId);
+
+      if (!error) {
+        objectivesUpdated++;
+      }
+    }
+  }
+
+  if (signalItems.length === 0) {
+    return { success: true, synced: 0, clusters_created: 0, objectives_updated: objectivesUpdated, rescored: 0 };
+  }
+
+  // Group signal items by cluster
+  const { clustered, unclustered } = groupItemsByClusters(signalItems);
 
   // Step 1: Create cluster records in Supabase and map plugin cluster IDs to Supabase UUIDs
   const clusterIdMap = new Map<string, string>();
@@ -168,5 +210,5 @@ export async function syncMondaySignals(): Promise<
   // Re-score synced matches using shared patterns + PM feedback history
   const { rescored } = await rescoreNewMatches();
 
-  return { success: true, synced: data.length, clusters_created: clusterIdMap.size, rescored };
+  return { success: true, synced: data.length, clusters_created: clusterIdMap.size, objectives_updated: objectivesUpdated, rescored };
 }

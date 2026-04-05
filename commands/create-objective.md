@@ -1,6 +1,6 @@
 ---
 name: create-objective
-description: Define a new strategic objective. Queries Salesforce for account context, generates a decomposition of signal types and entities to watch, saves it to the web app, and runs a 30-day backfill.
+description: Define a new strategic objective. Queries Salesforce for account context, generates a decomposition of signal types and entities to watch, writes it to the Monday board for sync, and runs a 30-day backfill. Can be triggered manually or via a Cowork scheduled task.
 ---
 
 ## Steps
@@ -26,13 +26,23 @@ description: Define a new strategic objective. Queries Salesforce for account co
 
 6. Apply the PM's edits.
 
-7. Save the decomposition to the web app via the objectives API:
-   ```
-   PATCH {app_url}/api/objectives
-   Headers: Authorization: Bearer {signals_api_key}, Content-Type: application/json
-   Body: {"objective_id": "{objective_id}", "decomposition": {decomposition JSON}}
-   ```
-   This writes the decomposition to Supabase so the app's rescoring pipeline can use it.
+7. Write the decomposition to the Monday.com board so the app can sync it to Supabase:
+
+   Call the Monday MCP `create_item` tool:
+
+   * **Board ID**: `18407235431`
+   * **Item name**: Objective title (truncated to 50 characters)
+   * **Column values**:
+
+   | Column | Monday Column ID | Value |
+   |---|---|---|
+   | PM UUID | `text_mm23fspz` | PM's Supabase user ID |
+   | Objective ID | `text_mm23qar7` | The objective UUID from the web app |
+   | Source | `text_mm238jbc` | `objective_decomposition` (marker for sync) |
+   | Decomposition | `long_text_mm24fq7d` | The full decomposition JSON |
+   | Status | `color_mm23b9pc` | `Pending` |
+
+   The app's sync cron detects items with Source = `objective_decomposition` and updates the objective's `decomposition` field in Supabase instead of creating a match.
 
 8. Store the objective in Cowork project memory for use during signal collection:
    - Store: `{ "id": "{objective_id}", "title": "{objective text}", "status": "active", "decomposition": {decomposition JSON} }`
@@ -42,3 +52,7 @@ description: Define a new strategic objective. Queries Salesforce for account co
 
 10. After backfill completes, tell the PM:
     "Your objective '[name]' is now active with a full decomposition. I've run a 30-day backfill and written matches to the Monday board. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
+
+## Scheduling
+
+This command can be run as a Cowork scheduled task. For example, a PM could schedule it to run weekly to check if any existing objectives need decomposition updates based on new Salesforce data.
