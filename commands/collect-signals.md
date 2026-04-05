@@ -28,11 +28,28 @@ Before running the signal pipeline, check the Monday.com board for objectives cr
 
 3. If any new objectives were discovered, log: "Discovered and enriched [N] new objective(s) from the web app."
 
+### 0b. Discover Objective Status Changes
+
+1. Read items from board `18407235431` where:
+   - Source column (`text_mm238jbc`) = `objective_status_change`
+   - Status column (`color_mm23b9pc`) = `Pending`
+   - PM UUID column (`text_mm23fspz`) matches the current PM.
+
+2. For each status-change marker found:
+   a. Read the Objective ID (`text_mm23qar7`) and the new status from Content Summary (`text_mm23eqyw`).
+   b. Update the objective's status in project memory:
+      - If new status is `paused`: set `"status": "paused"` in project memory.
+      - If new status is `resolved`: set `"status": "resolved"` in project memory.
+      - If new status is `active`: set `"status": "active"` in project memory.
+   c. Update the marker item's Status to `Enriched` using the Monday MCP `change_item_column_values` tool.
+
+3. If any status changes were discovered, log: "Applied [N] objective status change(s) from the web app."
+
 ## 1. Context from Project Memory
 
 Read the following from Cowork project memory:
 
-* **Active Objectives**: The PM's current objectives (title, ID, decomposition with entities_to_watch and relevant_accounts). This now includes any objectives discovered in Section 0.
+* **Active Objectives**: The PM's current objectives **with status = "active"** (title, ID, decomposition with entities_to_watch and relevant_accounts). Skip any objectives with status "paused" or "resolved". This includes any objectives discovered or updated in Section 0.
 * **PM UUID**: The PM's Supabase user ID (used to tag Monday items).
 
 ## 2. Learning Context

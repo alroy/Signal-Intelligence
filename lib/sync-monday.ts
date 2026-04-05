@@ -104,6 +104,10 @@ export function isNewObjectiveMarker(item: MondayItem): boolean {
   return getColumnText(item, MONDAY_COLUMNS.source) === "new_objective";
 }
 
+export function isObjectiveStatusChangeMarker(item: MondayItem): boolean {
+  return getColumnText(item, MONDAY_COLUMNS.source) === "objective_status_change";
+}
+
 function parseDecomposition(text: string): Record<string, unknown> | null {
   if (!text) return null;
   try {
@@ -133,7 +137,7 @@ export async function syncMondaySignals(): Promise<
   const decompositionItems = items.filter(isDecompositionItem);
   // new_objective markers are for the Cowork plugin to discover — skip them during sync
   const signalItems = items.filter(
-    (item) => !isDecompositionItem(item) && !isNewObjectiveMarker(item)
+    (item) => !isDecompositionItem(item) && !isNewObjectiveMarker(item) && !isObjectiveStatusChangeMarker(item)
   );
 
   // Process objective decomposition updates
