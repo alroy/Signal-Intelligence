@@ -12,6 +12,7 @@ export interface Objective {
   title: string;
   status: "active" | "paused" | "resolved";
   decomposition: Record<string, unknown>;
+  resolution_note: string | null;
   created_at: string;
   updated_at: string;
 }
