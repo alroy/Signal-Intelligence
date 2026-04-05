@@ -12,7 +12,15 @@ Before collection, read the following from Cowork project memory (set during obj
 
 These are maintained by the PM via `/pm-signal-intelligence:create-objective` and stored in project memory.
 
-## 2. Signal Collection (Parallel)
+## 2. Learning Context
+
+Invoke **`feedback-learning`** to read confirmed and dismissed items from the Monday board. This returns:
+* **Few-shot examples**: Up to 5 confirmed and 5 dismissed signals to guide LLM matching.
+* **Score threshold**: Minimum score to include, calibrated from the PM's feedback history.
+
+If no reviewed items exist yet, use default settings (minimum score 5, no few-shot examples).
+
+## 3. Signal Collection (Parallel)
 Gather raw data from the last 24 hours (or specified `--days`):
 
 * **Slack**: Summarize threads (3+ messages) and skip short chatter (< 20 chars).
@@ -20,7 +28,7 @@ Gather raw data from the last 24 hours (or specified `--days`):
 * **Gong**: Extract 5-10 "Key Moments" per call using the Gong MCP server.
 * **Gmail**: Pull threads from the last 24 hours. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
 
-## 3. Intelligence Pipeline
+## 4. Intelligence Pipeline
 
 ### Step 1: Normalization
 Invoke **`signal-preprocessing`** to standardize all raw data into a JSON format.
@@ -29,12 +37,12 @@ Invoke **`signal-preprocessing`** to standardize all raw data into a JSON format
 Perform a string-match against `entities_to_watch` and `relevant_accounts`. Skip LLM matching if no overlap exists.
 
 ### Step 3: LLM Matching
-Invoke **`signal-matching`** to evaluate each signal against the PM's objectives.
+Invoke **`signal-matching`** to evaluate each signal against the PM's objectives. Include the few-shot examples from the learning context to guide scoring. Only keep matches above the calibrated score threshold.
 
 ### Step 4: Clustering
 Group matches by account and theme within a 72-hour window. For each group with 2+ matches, ask the LLM: "Do these matches refer to the same underlying event or theme?" If yes, assign the same `cluster_id`. Multi-source clusters (same event seen in Slack and Gong) rank higher.
 
-## 4. Write to Monday.com Board
+## 5. Write to Monday.com Board
 
 Write each matched signal as an item on the shared Monday.com board using the Monday MCP server.
 
@@ -63,7 +71,7 @@ For each match, call the Monday MCP `create_item` tool:
 
 **Note:** The web app's cron job syncs pending items from this board into Supabase twice daily. PMs can also trigger a manual sync from the dashboard.
 
-## 5. Summary Report
+## 6. Summary Report
 
 Upon completion, generate a final response to the PM:
 
