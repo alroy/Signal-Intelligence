@@ -40,7 +40,7 @@ export async function createObjective(title: string) {
         text_mm23fspz: user.id,
         text_mm23qar7: data.id,
         text_mm238jbc: "new_objective",
-        color_mm23b9pc: JSON.stringify({ index: 9 }),
+        color_mm23b9pc: { index: 9 },
       });
     } catch (e) {
       console.error("Failed to write objective marker to Monday.com:", e);
