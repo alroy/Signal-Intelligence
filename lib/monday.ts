@@ -86,3 +86,25 @@ export async function updateSignalStatus(
     value: JSON.stringify({ label: status }),
   });
 }
+
+export async function createBoardItem(
+  boardId: string,
+  itemName: string,
+  columnValues: Record<string, string>
+): Promise<string> {
+  const query = `
+    mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
+      create_item(board_id: $boardId, item_name: $itemName, column_values: $columnValues) {
+        id
+      }
+    }
+  `;
+
+  const data = await mondayQuery<{ create_item: { id: string } }>(query, {
+    boardId,
+    itemName,
+    columnValues: JSON.stringify(columnValues),
+  });
+
+  return data.create_item.id;
+}

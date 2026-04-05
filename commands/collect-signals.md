@@ -3,14 +3,37 @@ name: collect-signals
 description: Collect signals from Slack, Salesforce, Gong, and Gmail. Matches them against active objectives using LLM evaluation and clustering. Writes results to a shared Monday.com board.
 ---
 
+## 0. Discover New Objectives
+
+Before running the signal pipeline, check the Monday.com board for objectives created in the web app that haven't been enriched yet.
+
+1. Read items from board `18407235431` where:
+   - Source column (`text_mm238jbc`) = `new_objective`
+   - Status column (`color_mm23b9pc`) = `Pending`
+   - PM UUID column (`text_mm23fspz`) matches the current PM.
+
+2. For each unenriched objective found:
+   a. Read the Objective ID (`text_mm23qar7`) and item name (the objective title).
+   b. Check project memory — if this objective ID already has a decomposition stored, skip it.
+   c. Query Salesforce for the account landscape summary (same as create-objective step 3).
+   d. Invoke the **`objective-decomposition`** skill to generate a structured decomposition from the title and Salesforce summary.
+   e. Write the decomposition to the Monday board as a **new item**:
+      - Source = `objective_decomposition`
+      - Objective ID = same objective UUID
+      - PM UUID = same PM UUID
+      - Decomposition = the JSON output
+      - Status = `Pending`
+   f. Update the original `new_objective` item's Status to `Enriched` using the Monday MCP `change_item_column_values` tool.
+   g. Store the objective in project memory: `{ "id": "{objective_id}", "title": "{title}", "status": "active", "decomposition": {decomposition JSON} }`.
+
+3. If any new objectives were discovered, log: "Discovered and enriched [N] new objective(s) from the web app."
+
 ## 1. Context from Project Memory
 
-Before collection, read the following from Cowork project memory (set during objective creation):
+Read the following from Cowork project memory:
 
-* **Active Objectives**: The PM's current objectives (title, ID, decomposition with entities_to_watch and relevant_accounts).
+* **Active Objectives**: The PM's current objectives (title, ID, decomposition with entities_to_watch and relevant_accounts). This now includes any objectives discovered in Section 0.
 * **PM UUID**: The PM's Supabase user ID (used to tag Monday items).
-
-These are maintained by the PM via `/pm-signal-intelligence:create-objective` and stored in project memory.
 
 ## 2. Learning Context
 
