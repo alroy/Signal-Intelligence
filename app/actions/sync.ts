@@ -100,13 +100,29 @@ export async function triggerMondaySync() {
     };
   });
 
+  // Filter out items that already exist in Supabase (no unique constraint on monday_item_id)
+  const mondayIds = rows.map((r) => r.monday_item_id);
+  const { data: existing } = await admin
+    .from("matches")
+    .select("monday_item_id")
+    .in("monday_item_id", mondayIds);
+
+  const existingIds = new Set((existing || []).map((e) => e.monday_item_id));
+  const newRows = rows.filter((r) => !existingIds.has(r.monday_item_id));
+
+  if (newRows.length === 0) {
+    revalidatePath("/dashboard");
+    revalidatePath("/objectives/[id]", "page");
+    return { success: true as const, synced: 0 };
+  }
+
   const { data, error } = await admin
     .from("matches")
-    .upsert(rows, { onConflict: "monday_item_id" })
+    .insert(newRows)
     .select("id");
 
   if (error) {
-    return { error: `Supabase upsert failed: ${error.message}` };
+    return { error: `Supabase insert failed: ${error.message}` };
   }
 
   // Re-score synced matches
