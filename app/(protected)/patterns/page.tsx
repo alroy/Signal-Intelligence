@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SharedPattern } from "@/types/database";
 import { PatternCard } from "@/components/patterns/pattern-card";
-import { PatternPlaceholderCard } from "@/components/patterns/pattern-placeholder-card";
 
 export default async function PatternsPage() {
   const supabase = await createClient();
@@ -36,12 +35,6 @@ export default async function PatternsPage() {
           Cross-PM insights that improve signal matching for everyone. Patterns
           are automatically extracted from aggregated feedback.
         </p>
-        {!hasPatterns && (
-          <p className="mt-1 text-sm text-gray-400">
-            Keep confirming and dismissing matches to help the system identify
-            shared patterns.
-          </p>
-        )}
       </div>
 
       {hasPatterns ? (
@@ -58,8 +51,11 @@ export default async function PatternsPage() {
           </div>
         ))
       ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          <PatternPlaceholderCard />
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <p className="text-sm text-gray-500">
+            No patterns yet. Shared patterns will be automatically extracted
+            from aggregated PM feedback over time.
+          </p>
         </div>
       )}
     </div>
