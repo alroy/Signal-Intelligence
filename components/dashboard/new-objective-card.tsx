@@ -39,12 +39,10 @@ export function NewObjectiveCard() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex min-h-[140px] w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-white p-6 transition-colors hover:border-gray-400 hover:bg-gray-50"
+        className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white p-6 transition-colors hover:border-gray-400 hover:bg-gray-50"
       >
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-2xl font-light text-gray-400">
-          +
-        </span>
-        <span className="text-sm font-semibold text-gray-400">
+        <span className="text-xl text-gray-400">+</span>
+        <span className="text-sm font-medium text-gray-400">
           New objective
         </span>
       </button>
@@ -54,7 +52,7 @@ export function NewObjectiveCard() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex min-h-[140px] flex-col rounded-lg border-2 border-blue-200 bg-white p-4"
+      className="flex flex-col rounded-lg border border-blue-200 bg-white p-6"
     >
       <label
         htmlFor="new-objective-title"

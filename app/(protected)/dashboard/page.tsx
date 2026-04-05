@@ -56,8 +56,6 @@ export default async function DashboardPage() {
     };
   });
 
-  const hasObjectives = objectivesWithCounts.length > 0;
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -66,37 +64,31 @@ export default async function DashboardPage() {
           <p className="mt-1 text-gray-600">
             Welcome back, {profile?.name || profile?.email}
           </p>
+          {objectivesWithCounts.length === 0 && (
+            <p className="mt-1 text-sm text-gray-400">
+              Define your first strategic objective to start monitoring signals
+              from Slack, Salesforce, Gong, and Gmail.
+            </p>
+          )}
         </div>
         <SyncButton />
       </div>
 
-      {hasObjectives ? (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          <NewObjectiveCard />
-          {objectivesWithCounts.map(
-            ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
-              <ObjectiveCard
-                key={objective.id}
-                objective={objective}
-                unreadCount={unreadCount}
-                highestUrgency={highestUrgency}
-                latestMatchAt={latestMatchAt}
-                totalMatches={totalMatches}
-              />
-            )
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4 py-16">
-          <div className="w-full max-w-sm">
-            <NewObjectiveCard />
-          </div>
-          <p className="max-w-md text-center text-sm text-gray-500">
-            Define your first strategic objective to start monitoring signals
-            from Slack, Salesforce, Gong, and Gmail.
-          </p>
-        </div>
-      )}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <NewObjectiveCard />
+        {objectivesWithCounts.map(
+          ({ objective, unreadCount, highestUrgency, latestMatchAt, totalMatches }) => (
+            <ObjectiveCard
+              key={objective.id}
+              objective={objective}
+              unreadCount={unreadCount}
+              highestUrgency={highestUrgency}
+              latestMatchAt={latestMatchAt}
+              totalMatches={totalMatches}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 }
