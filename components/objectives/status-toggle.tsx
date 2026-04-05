@@ -2,9 +2,16 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { updateObjectiveStatus, resolveObjective } from "@/app/actions/feedback";
+import {
+  updateObjectiveStatus,
+  resolveObjective,
+} from "@/app/actions/feedback";
 
-const statuses = ["active", "paused", "resolved"] as const;
+const badgeStyles: Record<string, { dot: string; text: string; bg: string }> = {
+  active: { dot: "bg-green-500", text: "text-green-800", bg: "bg-green-50" },
+  paused: { dot: "bg-amber-500", text: "text-amber-800", bg: "bg-amber-50" },
+  resolved: { dot: "bg-gray-400", text: "text-gray-600", bg: "bg-gray-100" },
+};
 
 export function StatusToggle({
   objectiveId,
@@ -26,23 +33,22 @@ export function StatusToggle({
     }
   }, [showResolveModal]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const status = e.target.value as "active" | "paused" | "resolved";
-    if (status === currentStatus) return;
-
-    if (status === "resolved") {
-      // Reset select to current value — modal will handle the actual change
-      e.target.value = currentStatus;
-      setShowResolveModal(true);
-      return;
-    }
-
+  function handleToggle() {
+    if (isPending) return;
+    const next = currentStatus === "active" ? "paused" : "active";
     startTransition(async () => {
-      await updateObjectiveStatus(objectiveId, status);
+      await updateObjectiveStatus(objectiveId, next);
     });
-  };
+  }
 
-  const handleConfirmResolve = () => {
+  function handleReactivate() {
+    if (isPending) return;
+    startTransition(async () => {
+      await updateObjectiveStatus(objectiveId, "active");
+    });
+  }
+
+  function handleConfirmResolve() {
     setError(null);
     startTransition(async () => {
       const result = await resolveObjective(objectiveId, resolutionNote);
@@ -53,53 +59,79 @@ export function StatusToggle({
         router.push("/dashboard");
       }
     });
-  };
-
-  if (currentStatus === "resolved") {
-    return (
-      <div className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-3 pr-3 text-xs font-medium text-gray-500">
-        <svg
-          className="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        Resolved
-      </div>
-    );
   }
+
+  const badge = badgeStyles[currentStatus] || badgeStyles.active;
 
   return (
     <>
-      <select
-        value={currentStatus}
-        onChange={handleChange}
-        disabled={isPending}
-        className="appearance-none rounded-md border border-gray-200 bg-white py-1.5 pl-3 pr-8 text-xs font-medium capitalize text-gray-700 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[position:right_6px_center] bg-no-repeat disabled:opacity-50"
-      >
-        {statuses.map((status) => (
-          <option key={status} value={status}>
-            {status}
-          </option>
-        ))}
-      </select>
+      <div className="space-y-3">
+        {/* Status badge */}
+        <div
+          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${badge.bg} ${badge.text}`}
+        >
+          <span className={`h-2 w-2 rounded-full ${badge.dot}`} />
+          <span className="capitalize">{currentStatus}</span>
+        </div>
 
+        {currentStatus === "resolved" ? (
+          /* Resolved: show re-activate link */
+          <button
+            onClick={handleReactivate}
+            disabled={isPending}
+            className="block text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
+          >
+            {isPending ? "Reactivating\u2026" : "Re-activate objective"}
+          </button>
+        ) : (
+          /* Active or Paused: show action buttons */
+          <div className="space-y-2">
+            <button
+              onClick={handleToggle}
+              disabled={isPending}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            >
+              {currentStatus === "active" ? (
+                <>
+                  {/* Pause icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                  {isPending ? "Pausing\u2026" : "Pause Collection"}
+                </>
+              ) : (
+                <>
+                  {/* Play icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  {isPending ? "Resuming\u2026" : "Resume Monitoring"}
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowResolveModal(true)}
+              disabled={isPending}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Resolve Objective
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Resolve confirmation modal */}
       {showResolveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900">
-              Resolve Objective?
+              Resolve Strategic Objective?
             </h3>
             <p className="mt-2 text-sm text-gray-600">
-              Resolving this objective will stop the daily AI collection and
-              remove it from your active dashboard. This action is intended for
-              goals that have been successfully met or are no longer relevant.
+              This will stop all daily AI signal collection for this objective.
+              It will be moved to your &ldquo;Resolved&rdquo; list.
             </p>
 
             <label
@@ -114,7 +146,7 @@ export function StatusToggle({
               id="resolution-note"
               value={resolutionNote}
               onChange={(e) => setResolutionNote(e.target.value)}
-              placeholder="What was the outcome?"
+              placeholder="What was the final outcome?"
               disabled={isPending}
               rows={3}
               className="mt-1 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50"

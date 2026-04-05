@@ -34,12 +34,21 @@ export default async function ObjectiveDetailPage({
 
   const typedMatches = (matches || []) as MatchWithCluster[];
 
+  const statusColors: Record<string, string> = {
+    active: "text-green-700",
+    paused: "text-amber-700",
+    resolved: "text-gray-500",
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{objective.title}</h2>
         <p className="mt-1 text-sm text-gray-500">
-          {objective.status} · Created{" "}
+          <span className={statusColors[objective.status] || "text-gray-500"}>
+            {objective.status}
+          </span>
+          {" · Created "}
           {new Date(objective.created_at).toLocaleDateString()}
         </p>
       </div>
