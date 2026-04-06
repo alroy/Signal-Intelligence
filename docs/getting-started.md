@@ -57,7 +57,7 @@ Gong requires a dedicated MCP server to be installed. The MCP server is not yet 
 
 ## Step 2: Install the Plugin
 
-1. [Download the plugin file: pm-signal-intelligence-plugin.zip](PLACEHOLDER_URL)
+1. Download the plugin file: [pm-signal-intelligence-plugin.zip](PLACEHOLDER_URL)
 2. Open Claude Desktop and switch to the **Cowork** tab.
 3. In the left sidebar, click **Customize**.
 4. Click **Browse plugins**.
