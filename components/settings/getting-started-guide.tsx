@@ -78,8 +78,8 @@ export function GettingStartedGuide({
   markdownContent,
 }: GettingStartedGuideProps) {
   const processedContent = markdownContent.replace(
-    "[Download the plugin file: pm-signal-intelligence-plugin.zip](PLACEHOLDER_URL)",
-    "[Download the plugin file: pm-signal-intelligence-plugin.zip](/api/download-plugin)"
+    "Download the plugin file: [pm-signal-intelligence-plugin.zip](PLACEHOLDER_URL)",
+    "Download the plugin file: [pm-signal-intelligence-plugin.zip](/api/download-plugin)"
   );
 
   return (
