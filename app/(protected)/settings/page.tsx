@@ -1,12 +1,20 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { createClient } from "@/lib/supabase/server";
 import type { PmProfile } from "@/types/database";
 import { UuidDisplay } from "@/components/settings/uuid-display";
+import { GettingStartedGuide } from "@/components/settings/getting-started-guide";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const markdownContent = await readFile(
+    path.join(process.cwd(), "docs", "getting-started.md"),
+    "utf-8"
+  );
 
   const { data: profile } = await supabase
     .from("pm_profiles")
@@ -37,6 +45,9 @@ export default async function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Getting Started */}
+      <GettingStartedGuide markdownContent={markdownContent} />
 
       {/* Supabase UUID */}
       <section className="rounded-lg border border-gray-200 bg-white p-6">
