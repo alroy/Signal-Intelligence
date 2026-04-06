@@ -50,9 +50,12 @@ export function ArchivedObjectiveCard({
       </div>
 
       {objective.resolution_note && (
-        <p className="mt-2 text-sm text-gray-500 italic">
-          {objective.resolution_note}
-        </p>
+        <div className="mt-3 rounded-md bg-slate-50 px-3 py-2">
+          <p className="text-xs font-medium text-slate-500">Resolution</p>
+          <p className="mt-0.5 text-sm text-slate-700">
+            {objective.resolution_note}
+          </p>
+        </div>
       )}
 
       <div className="mt-4 flex items-center gap-3 text-xs text-gray-400">

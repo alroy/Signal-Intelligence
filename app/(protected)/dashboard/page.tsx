@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
 import { NewObjectiveCard } from "@/components/dashboard/new-objective-card";
@@ -21,6 +22,12 @@ export default async function DashboardPage() {
     .eq("pm_id", user!.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });
+
+  const { count: resolvedCount } = await supabase
+    .from("objectives")
+    .select("*", { count: "exact", head: true })
+    .eq("pm_id", user!.id)
+    .eq("status", "resolved");
 
   const objectivesWithCounts = (objectives || []).map((obj) => {
     const matches = (obj.matches || []) as Array<{
@@ -89,6 +96,17 @@ export default async function DashboardPage() {
           )
         )}
       </div>
+
+      {(resolvedCount ?? 0) > 0 && (
+        <div className="pt-4 text-center">
+          <Link
+            href="/archive"
+            className="text-sm text-slate-400 transition-colors hover:text-slate-600"
+          >
+            View Resolved Objectives
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

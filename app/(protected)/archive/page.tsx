@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ArchivedObjectiveCard } from "@/components/archive/archived-objective-card";
 
@@ -30,9 +31,18 @@ export default async function ArchivePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Archive</h2>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 transition-colors hover:text-slate-600"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Active Objectives
+        </Link>
+        <h2 className="mt-3 text-2xl font-bold">Resolved Objectives</h2>
         <p className="mt-1 text-gray-600">
-          Resolved objectives and their collected signals.
+          Objectives you&apos;ve resolved and their collected signals.
         </p>
       </div>
 
