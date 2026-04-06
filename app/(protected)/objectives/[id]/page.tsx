@@ -49,6 +49,7 @@ export default async function ObjectiveDetailPage({
     .from("matches")
     .select("*, cluster:clusters(id, situation_summary, combined_urgency)")
     .eq("objective_id", id)
+    .not("source", "in", "(objective_status_change,new_objective,objective_decomposition)")
     .order("created_at", { ascending: false });
 
   const typedMatches = (matches || []) as MatchWithCluster[];

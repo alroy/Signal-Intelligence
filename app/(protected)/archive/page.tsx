@@ -10,16 +10,18 @@ export default async function ArchivePage() {
 
   const { data: objectives } = await supabase
     .from("objectives")
-    .select("*, matches(id, feedback)")
+    .select("*, matches(id, source, feedback)")
     .eq("pm_id", user!.id)
     .eq("status", "resolved")
     .order("updated_at", { ascending: false });
 
   const objectivesWithCounts = (objectives || []).map((obj) => {
-    const matches = (obj.matches || []) as Array<{
+    const MARKER_SOURCES = ["objective_status_change", "new_objective", "objective_decomposition"];
+    const matches = ((obj.matches || []) as Array<{
       id: string;
+      source: string;
       feedback: string;
-    }>;
+    }>).filter((m) => !MARKER_SOURCES.includes(m.source));
     return {
       objective: { ...obj, matches: undefined },
       totalMatches: matches.length,
