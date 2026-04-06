@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Signal Intelligence",
-  description: "Signal monitoring for product managers",
+  title: {
+    default: "Signal Intelligence",
+    template: "%s | Signal Intelligence",
+  },
+  description: "Monitor signals that matter for your strategic objectives",
 };
 
 export default function RootLayout({
