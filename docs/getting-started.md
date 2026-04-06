@@ -10,7 +10,7 @@ This guide walks you through setting everything up. You'll need about **20 minut
 - The PM Signal Intelligence plugin installed
 - A Cowork project configured with your identity
 - A daily schedule that collects signals automatically
-- Your first objective with a 30-day backfill of real signals
+- Your first objective with a 90-day backfill of real signals
 
 **Prerequisites:**
 
@@ -190,7 +190,7 @@ Claude will:
 3. Generate a **decomposition** — a structured breakdown of what signal types to look for, which entities to watch, and which Salesforce filters to apply.
 4. Show the decomposition to you for review. You can edit it: "add Hebrew terms for city manager," "include accounts nearing renewal," etc.
 5. Write the final decomposition to the Monday board.
-6. Run a **30-day backfill** — scanning the past month of data across all sources for relevant signals. This takes a few minutes.
+6. Run a **90-day backfill** — scanning the past 90 days of data across all sources for relevant signals. This takes a few minutes.
 
 If you skip this step, the next scheduled daily run will discover and enrich the objective automatically (though without your review of the decomposition).
 

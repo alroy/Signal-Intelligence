@@ -1,6 +1,6 @@
 ---
 name: create-objective
-description: Define a new strategic objective. Queries Salesforce for account context, generates a decomposition of signal types and entities to watch, writes it to the Monday board for sync, and runs a 30-day backfill. Can be triggered manually or via a Cowork scheduled task.
+description: Define a new strategic objective. Queries Salesforce for account context, generates a decomposition of signal types and entities to watch, writes it to the Monday board for sync, and runs a 90-day backfill. Can be triggered manually or via a Cowork scheduled task.
 ---
 
 ## Steps
@@ -61,10 +61,10 @@ description: Define a new strategic objective. Queries Salesforce for account co
     - Store: `{ "id": "{objective_id}", "title": "{objective text}", "status": "active", "decomposition": {decomposition JSON} }`
     - Add to the list of active objectives in project memory.
 
-11. Run `/pm-signal-intelligence:collect-signals --days 30` for a backfill.
+11. Run `/pm-signal-intelligence:collect-signals --days 90` for a backfill.
 
 12. After backfill completes, tell the PM:
-    "Your objective '[name]' is now active with a full decomposition. I've run a 30-day backfill and written matches to the Monday board. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
+    "Your objective '[name]' is now active with a full decomposition. I've run a 90-day backfill and written matches to the Monday board. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
 
 ## Scheduling
 
