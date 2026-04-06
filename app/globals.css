@@ -3,6 +3,7 @@
 @theme {
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-entrance: entrance 0.6s ease-out both;
+  --animate-scan: scan 8s linear infinite;
 }
 
 /* Markdown prose typography */
@@ -162,4 +163,20 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.signal-grid {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
