@@ -9,7 +9,7 @@ By the end of this guide you'll have:
 4. The PM Signal Intelligence plugin installed in Cowork.
 5. A shared Monday.com board linked to the signal pipeline.
 6. A daily scheduled task for automatic signal collection.
-7. Your first objective with a 30-day backfill of real signals.
+7. Your first objective with a 90-day backfill of real signals.
 
 ---
 
@@ -464,7 +464,7 @@ Claude will:
 3. Generate a decomposition (signal types, entities, filters).
 4. Show it to you for review. Edit as needed ("add Hebrew terms for city manager," "include accounts nearing renewal").
 5. Write the decomposition to the Monday board for sync to Supabase.
-6. Run a 30-day backfill. This takes a few minutes.
+6. Run a 90-day backfill. This takes a few minutes.
 
 If you skip this step, the next daily scheduled task will automatically discover and enrich the objective — but without PM review of the decomposition.
 

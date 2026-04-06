@@ -28,6 +28,8 @@ Before running the signal pipeline, check the Monday.com board for objectives cr
 
 3. If any new objectives were discovered, log: "Discovered and enriched [N] new objective(s) from the web app."
 
+4. Store the list of newly discovered objective IDs (from step 2) as `new_objective_ids` for use in Section 5c.
+
 ### 0b. Discover Objective Status Changes
 
 1. Read items from board `18407235431` where:
@@ -133,8 +135,25 @@ For each match, call the Monday MCP `create_item` tool:
 
 Store `last_collection_date` in project memory with the current ISO 8601 timestamp. This ensures subsequent runs use the default 24-hour window.
 
+### 5c. Backfill Pass for Newly Discovered Objectives
+
+If `new_objective_ids` (from Section 0, step 4) is empty, skip this section entirely.
+
+Otherwise, run a dedicated 90-day backfill for the newly discovered objectives:
+
+1. **Scope**: Filter active objectives to ONLY those in `new_objective_ids`. Existing objectives are excluded from this pass.
+2. **Collection window**: Use **90 days** as the lookback window, regardless of the `--days` argument or `last_collection_date`.
+3. **Learning context**: Reuse the feedback-learning results from Section 2 (no need to re-invoke).
+4. **Signal collection**: Re-run Section 3 (Slack, Salesforce, Gong, Gmail) with the 90-day window.
+5. **Intelligence pipeline**: Run the full Section 4 pipeline (normalize, pre-filter, match, cluster) but only matching against the new objectives from `new_objective_ids`.
+6. **Write to Monday**: Write matched signals to the Monday board per Section 5. Before writing each item, check if an item with the same Source Reference source ID and Objective ID was already written in the regular pass (Section 5). If so, skip it to avoid duplicates.
+7. Log: "Completed 90-day backfill for [N] new objective(s). Created [M] additional items on the Monday board."
+
 ## 6. Summary Report
 
 Upon completion, generate a final response to the PM:
 
 > "Collected [N] signals from Slack, Salesforce, Gong, and Gmail. Created [M] items on the shared Monday board across [K] active objectives. [X] signals were grouped into [C] clusters. Signals will sync to the web app shortly, or you can trigger a manual sync from the dashboard."
+
+If a backfill pass was run (Section 5c), append:
+> "Additionally, ran a 90-day backfill for [N] newly discovered objective(s), creating [M] additional items."
