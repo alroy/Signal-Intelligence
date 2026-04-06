@@ -1,8 +1,27 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchWithCluster } from "@/types/database";
 import { FilterableMatchFeed } from "@/components/objectives/filterable-match-feed";
 import { ObjectiveSidebar } from "@/components/objectives/objective-sidebar";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: objective } = await supabase
+    .from("objectives")
+    .select("title")
+    .eq("id", id)
+    .single();
+
+  return {
+    title: objective?.title ?? "Objective",
+  };
+}
 
 export default async function ObjectiveDetailPage({
   params,
