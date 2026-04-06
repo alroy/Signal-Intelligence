@@ -428,7 +428,7 @@ In the project, type:
 When asked for instructions:
 
 ```
-Run /pm-signal-intelligence:collect-signals for the past 24 hours.
+Run /pm-signal-intelligence:collect-signals
 ```
 
 This runs every morning when your computer is awake and Claude Desktop is open. The daily task is fully autonomous:

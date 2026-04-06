@@ -52,6 +52,17 @@ Read the following from Cowork project memory:
 * **Active Objectives**: The PM's current objectives **with status = "active"** (title, ID, decomposition with entities_to_watch and relevant_accounts). Skip any objectives with status "paused" or "resolved". This includes any objectives discovered or updated in Section 0.
 * **PM UUID**: The PM's Supabase user ID (used to tag Monday items).
 
+### 1b. Determine Collection Window
+
+Determine how far back to collect signals:
+
+1. If the `--days` argument was provided, use that value.
+2. Otherwise, check project memory for `last_collection_date`.
+   - **If `last_collection_date` is not found** (first run): use **90 days** as the lookback window. Log: "No previous collection found — running initial 90-day backfill."
+   - **If `last_collection_date` is found**: use **24 hours** (the default daily window).
+
+Store the resolved lookback value for use in Section 3.
+
 ## 2. Learning Context
 
 Invoke **`feedback-learning`** to read confirmed and dismissed items from the Monday board. This returns:
@@ -63,12 +74,12 @@ If no reviewed items exist yet, use default settings (minimum score 5, no few-sh
 **Note:** The few-shot examples use the plugin's original scores (pre-rescore). The app rescores matches after sync using shared patterns and PM feedback, but those rescored values stay in Supabase. This is expected — the plugin calibrates its own scoring accuracy.
 
 ## 3. Signal Collection (Parallel)
-Gather raw data from the last 24 hours (or specified `--days`):
+Gather raw data using the collection window determined in Section 1b:
 
 * **Slack**: Summarize threads (3+ messages) and skip short chatter (< 20 chars).
 * **Salesforce**: Query for stage changes, new notes, and renewals within 60 days.
 * **Gong**: Extract 5-10 "Key Moments" per call using the Gong MCP server.
-* **Gmail**: Pull threads from the last 24 hours. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
+* **Gmail**: Pull threads from the collection window. Match sender/recipient domains against `relevant_accounts`. Summarize key moments — renewal discussions, escalation threads, feature requests, stakeholder introductions. Preserve original-language excerpts in citations.
 
 ## 4. Intelligence Pipeline
 
@@ -117,6 +128,10 @@ For each match, call the Monday MCP `create_item` tool:
 | Status | `color_mm23b9pc` | status | Always set to `Pending` |
 
 **Note:** The web app's cron job syncs pending items from this board into Supabase. During sync, the app creates cluster records and resolves cluster IDs, then rescores each match using shared patterns and PM feedback history. PMs can also trigger a manual sync from the dashboard.
+
+### 5b. Update Collection Timestamp
+
+Store `last_collection_date` in project memory with the current ISO 8601 timestamp. This ensures subsequent runs use the default 24-hour window.
 
 ## 6. Summary Report
 
