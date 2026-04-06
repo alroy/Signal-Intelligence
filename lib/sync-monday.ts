@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchPendingSignals, type MondayItem } from "@/lib/monday";
+import { fetchPendingSignals, updateSignalStatus, type MondayItem } from "@/lib/monday";
 import { rescoreNewMatches } from "@/lib/rescore";
 
 // Monday.com column IDs from the Signal Intelligence board (board 18407235431)
@@ -133,12 +133,23 @@ export async function syncMondaySignals(): Promise<
 
   const supabase = createAdminClient();
 
-  // Separate item types: decomposition updates, new objective markers, and signal items
+  // Separate item types: decomposition updates, marker items, and signal items
   const decompositionItems = items.filter(isDecompositionItem);
-  // new_objective markers are for the Cowork plugin to discover — skip them during sync
+  const markerItems = items.filter(
+    (item) => isNewObjectiveMarker(item) || isObjectiveStatusChangeMarker(item)
+  );
   const signalItems = items.filter(
     (item) => !isDecompositionItem(item) && !isNewObjectiveMarker(item) && !isObjectiveStatusChangeMarker(item)
   );
+
+  // Mark marker items as processed on Monday so they don't get re-fetched
+  for (const item of markerItems) {
+    try {
+      await updateSignalStatus(item.id, "Enriched");
+    } catch {
+      // Best-effort: don't fail the entire sync if a single marker update fails
+    }
+  }
 
   // Process objective decomposition updates
   let objectivesUpdated = 0;

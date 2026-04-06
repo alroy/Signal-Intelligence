@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ObjectiveCard } from "@/components/dashboard/objective-card";
 import { NewObjectiveCard } from "@/components/dashboard/new-objective-card";
@@ -17,18 +18,20 @@ export default async function DashboardPage() {
 
   const { data: objectives } = await supabase
     .from("objectives")
-    .select("*, matches(id, urgency, feedback, created_at)")
+    .select("*, matches(id, source, urgency, feedback, created_at)")
     .eq("pm_id", user!.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
   const objectivesWithCounts = (objectives || []).map((obj) => {
-    const matches = (obj.matches || []) as Array<{
+    const MARKER_SOURCES = ["objective_status_change", "new_objective", "objective_decomposition"];
+    const matches = ((obj.matches || []) as Array<{
       id: string;
+      source: string;
       urgency: string;
       feedback: string;
       created_at: string;
-    }>;
+    }>).filter((m) => !MARKER_SOURCES.includes(m.source));
     const pendingMatches = matches.filter((m) => m.feedback === "pending");
     const urgencyOrder = ["act_now", "this_week", "background"];
     const highestUrgency =
@@ -88,6 +91,15 @@ export default async function DashboardPage() {
             />
           )
         )}
+      </div>
+
+      <div className="pt-4">
+        <Link
+          href="/archive"
+          className="text-sm text-slate-400 transition-colors hover:text-slate-600"
+        >
+          View Resolved Objectives
+        </Link>
       </div>
     </div>
   );

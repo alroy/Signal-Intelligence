@@ -1,0 +1,80 @@
+"use client";
+
+import { useTransition, useState } from "react";
+import Link from "next/link";
+import { updateObjectiveStatus } from "@/app/actions/feedback";
+import type { Objective } from "@/types/database";
+
+export function ArchivedObjectiveCard({
+  objective,
+  totalMatches,
+  confirmedCount,
+  dismissedCount,
+}: {
+  objective: Objective;
+  totalMatches: number;
+  confirmedCount: number;
+  dismissedCount: number;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [removed, setRemoved] = useState(false);
+
+  function handleReactivate(e: React.MouseEvent) {
+    e.preventDefault();
+    if (isPending) return;
+    startTransition(async () => {
+      const result = await updateObjectiveStatus(objective.id, "active");
+      if (!result.error) {
+        setRemoved(true);
+      }
+    });
+  }
+
+  if (removed) return null;
+
+  return (
+    <Link
+      href={`/objectives/${objective.id}`}
+      className="block rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-base font-medium text-gray-900">
+          {objective.title}
+        </h3>
+        <button
+          onClick={handleReactivate}
+          disabled={isPending}
+          className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+        >
+          {isPending ? "Reactivating\u2026" : "Reactivate"}
+        </button>
+      </div>
+
+      {objective.resolution_note && (
+        <div className="mt-3 rounded-md bg-slate-50 px-3 py-2">
+          <p className="text-xs font-medium text-slate-500">Resolution</p>
+          <p className="mt-0.5 text-sm text-slate-700">
+            {objective.resolution_note}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 flex items-center gap-3 text-xs text-gray-400">
+        <span>
+          Resolved{" "}
+          {new Date(objective.updated_at).toLocaleDateString()}
+        </span>
+        <span className="text-gray-300">|</span>
+        <span>
+          {totalMatches} {totalMatches === 1 ? "match" : "matches"}
+        </span>
+        {confirmedCount > 0 && (
+          <span className="text-green-600">{confirmedCount} confirmed</span>
+        )}
+        {dismissedCount > 0 && (
+          <span className="text-gray-400">{dismissedCount} dismissed</span>
+        )}
+      </div>
+    </Link>
+  );
+}

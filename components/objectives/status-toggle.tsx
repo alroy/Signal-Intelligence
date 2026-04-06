@@ -22,6 +22,7 @@ export function StatusToggle({
 }) {
   const [isPending, startTransition] = useTransition();
   const [showResolveModal, setShowResolveModal] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -43,7 +44,7 @@ export function StatusToggle({
   function handleConfirmResolve() {
     setError(null);
     startTransition(async () => {
-      const result = await resolveObjective(objectiveId, "");
+      const result = await resolveObjective(objectiveId, resolutionNote);
       if (result.error) {
         setError(result.error);
       } else {
@@ -123,8 +124,16 @@ export function StatusToggle({
             </h3>
             <p className="mt-2 text-sm text-gray-600">
               This will stop all daily AI signal collection for this objective.
-              It will be moved to your &ldquo;Resolved&rdquo; list.
+              It will be moved to your Archive.
             </p>
+
+            <textarea
+              value={resolutionNote}
+              onChange={(e) => setResolutionNote(e.target.value)}
+              placeholder="Resolution note (optional)"
+              rows={3}
+              className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
 
             {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
@@ -133,6 +142,7 @@ export function StatusToggle({
                 type="button"
                 onClick={() => {
                   setShowResolveModal(false);
+                  setResolutionNote("");
                   setError(null);
                 }}
                 disabled={isPending}

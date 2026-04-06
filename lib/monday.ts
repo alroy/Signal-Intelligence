@@ -88,7 +88,7 @@ export async function fetchAllSignals(boardId: string): Promise<MondayItem[]> {
 
 export async function updateSignalStatus(
   itemId: string,
-  status: "Confirmed" | "Dismissed"
+  status: "Confirmed" | "Dismissed" | "Enriched"
 ): Promise<void> {
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!boardId) {
