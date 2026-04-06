@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition, useState } from "react";
 import Link from "next/link";
 import { updateObjectiveStatus } from "@/app/actions/feedback";
 import type { Objective } from "@/types/database";
@@ -19,7 +19,8 @@ export function ArchivedObjectiveCard({
   const [isPending, startTransition] = useTransition();
   const [removed, setRemoved] = useState(false);
 
-  function handleReactivate() {
+  function handleReactivate(e: React.MouseEvent) {
+    e.preventDefault();
     if (isPending) return;
     startTransition(async () => {
       const result = await updateObjectiveStatus(objective.id, "active");
@@ -32,14 +33,14 @@ export function ArchivedObjectiveCard({
   if (removed) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6">
+    <Link
+      href={`/objectives/${objective.id}`}
+      className="block rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
+    >
       <div className="flex items-start justify-between gap-3">
-        <Link
-          href={`/objectives/${objective.id}`}
-          className="text-base font-medium text-gray-900 hover:text-blue-600 transition-colors"
-        >
+        <h3 className="text-base font-medium text-gray-900">
           {objective.title}
-        </Link>
+        </h3>
         <button
           onClick={handleReactivate}
           disabled={isPending}
@@ -74,6 +75,6 @@ export function ArchivedObjectiveCard({
           <span className="text-gray-400">{dismissedCount} dismissed</span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
