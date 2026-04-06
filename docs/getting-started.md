@@ -6,11 +6,11 @@ This guide walks you through setting everything up. You'll need about **20 minut
 
 **What you'll set up:**
 
-- [ ] Claude Desktop connected to Slack, Salesforce, Gmail, and Gong
-- [ ] The PM Signal Intelligence plugin installed
-- [ ] A Cowork project configured with your identity
-- [ ] A daily schedule that collects signals automatically
-- [ ] Your first objective with a 30-day backfill of real signals
+- Claude Desktop connected to Slack, Salesforce, Gmail, and Gong
+- The PM Signal Intelligence plugin installed
+- A Cowork project configured with your identity
+- A daily schedule that collects signals automatically
+- Your first objective with a 30-day backfill of real signals
 
 **Prerequisites:**
 
