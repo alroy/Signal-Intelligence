@@ -45,6 +45,15 @@ export function ObjectiveSidebar({
         currentStatus={objective.status}
       />
 
+      {objective.status === "resolved" && objective.resolution_note && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">Resolution Note</h3>
+          <p className="mt-1 text-sm text-gray-600 italic">
+            {objective.resolution_note}
+          </p>
+        </div>
+      )}
+
       <div>
         <h3 className="text-sm font-medium text-gray-500">Match Stats</h3>
         <dl className="mt-2 space-y-1 text-sm">
