@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -60,10 +61,22 @@ export default async function ObjectiveDetailPage({
     resolved: "text-gray-500",
   };
 
+  const backHref = objective.status === "resolved" ? "/archive" : "/dashboard";
+  const backLabel = objective.status === "resolved" ? "Back to Resolved Objectives" : "Back to Active Objectives";
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">{objective.title}</h2>
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1 text-sm text-slate-400 transition-colors hover:text-slate-600"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 19l-7-7 7-7" />
+          </svg>
+          {backLabel}
+        </Link>
+        <h2 className="mt-3 text-2xl font-bold">{objective.title}</h2>
         <p className="mt-1 text-sm text-gray-500">
           <span className={statusColors[objective.status] || "text-gray-500"}>
             {objective.status}
