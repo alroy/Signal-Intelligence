@@ -141,15 +141,15 @@ export function FilterableMatchFeed({ matches }: { matches: MatchWithCluster[] }
               className="border-l-2 border-purple-300 pl-3 space-y-3"
             >
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-purple-900">
+                <span className="min-w-0 truncate text-sm font-medium text-purple-900">
                   {cluster.situation_summary}
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${urgencyColors[cluster.combined_urgency] || ""}`}
+                  className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${urgencyColors[cluster.combined_urgency] || ""}`}
                 >
                   {cluster.combined_urgency.replace("_", " ")}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">
                   {groupMatches.length} signals
                 </span>
               </div>

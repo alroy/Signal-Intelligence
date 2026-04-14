@@ -87,17 +87,17 @@ export function MatchItem({ match }: { match: MatchWithCluster }) {
           <p className="mt-1 text-sm text-gray-600">{match.explanation}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[match.category] || ""}`}
+              className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[match.category] || ""}`}
             >
               {match.category}
             </span>
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${urgencyColors[match.urgency] || ""}`}
+              className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${urgencyColors[match.urgency] || ""}`}
             >
               {match.urgency.replace("_", " ")}
             </span>
             {match.cluster && (
-              <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+              <span className="inline-flex items-center whitespace-nowrap rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
                 {match.cluster.situation_summary.length > 40
                   ? match.cluster.situation_summary.slice(0, 40) + "…"
                   : match.cluster.situation_summary}
