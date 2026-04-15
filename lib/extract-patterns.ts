@@ -120,6 +120,61 @@ async function classifyBatch(
   return parsed as ExtractionDecision[];
 }
 
+// Second-pass dedup. The batched classifier sees up to EXISTING_PATTERNS_LIMIT
+// patterns ranked by recency; it can still paraphrase an existing pattern when
+// the match is subtle. Before we insert a new row, re-check the proposal
+// against every existing pattern that shares its source_type and category
+// (categories ["opportunity","risk","info"] cut the search space by ~3x
+// and source_type by another ~4x, so buckets stay small).
+//
+// If Claude says the proposal is a duplicate, we return the matched id so the
+// caller can re-route the proposal's feedback into an existing-pattern
+// increment instead of creating a new row.
+async function findDuplicateOfProposal(
+  proposal: NewPatternProposal,
+  allExistingPatterns: ExistingPattern[]
+): Promise<string | null> {
+  const candidates = allExistingPatterns.filter(
+    (p) =>
+      p.source_type === proposal.source_type &&
+      (p.category ?? "") === (proposal.category ?? "")
+  );
+
+  if (candidates.length === 0) return null;
+
+  const prompt = `Decide whether a NEW pattern proposal describes the same phenomenon as any EXISTING pattern.
+
+Two patterns are duplicates if a product manager would confirm or dismiss signals for the same underlying reason. Paraphrases, reorderings, and different levels of specificity of the same theme count as duplicates. Different themes within the same category do not.
+
+NEW PROPOSAL:
+"${proposal.pattern_description}"
+(source_type=${proposal.source_type}, category=${proposal.category})
+
+EXISTING PATTERNS (same source_type and category):
+${candidates.map((p) => `- id=${p.id} | "${p.pattern_description}"`).join("\n")}
+
+If the proposal is a duplicate of one existing pattern, respond with ONLY that pattern's id.
+If the proposal is genuinely new, respond with ONLY the word: none
+
+No prose, no quotes, no explanation.`;
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 64,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const raw =
+    message.content[0].type === "text" ? message.content[0].text : "";
+  const answer = raw.trim().replace(/^["']|["']$/g, "");
+
+  if (!answer || answer.toLowerCase() === "none") return null;
+
+  // Claude might return a hallucinated id; only accept ids we showed it.
+  const match = candidates.find((p) => p.id === answer);
+  return match ? match.id : null;
+}
+
 export async function extractPatternsFromFeedback(): Promise<{
   processed: number;
   new_patterns: number;
@@ -173,15 +228,17 @@ export async function extractPatternsFromFeedback(): Promise<{
     return { processed: 0, new_patterns: 0, existing_updated: 0 };
   }
 
-  // Fetch existing patterns. Prefer the most-active ones so Claude sees the
-  // patterns most likely to recur, and keeps the prompt bounded.
-  const { data: patternRows } = await supabase
+  // Fetch existing patterns. The first-pass classifier only sees the top N by
+  // recency (keeps the batched prompt bounded), but the dedup pass below
+  // considers ALL patterns within the same source_type+category bucket, so an
+  // older-but-relevant pattern still prevents duplicate creation.
+  const { data: allPatternRows } = await supabase
     .from("shared_patterns")
     .select("id, pattern_description, source_type, category, confirmations, dismissals")
-    .order("updated_at", { ascending: false })
-    .limit(EXISTING_PATTERNS_LIMIT);
+    .order("updated_at", { ascending: false });
 
-  const existingPatterns = (patternRows ?? []) as ExistingPattern[];
+  const allExistingPatterns = (allPatternRows ?? []) as ExistingPattern[];
+  const existingPatterns = allExistingPatterns.slice(0, EXISTING_PATTERNS_LIMIT);
 
   // Ask Claude to classify.
   let decisions: ExtractionDecision[];
@@ -261,6 +318,41 @@ export async function extractPatternsFromFeedback(): Promise<{
       newGroups.set(key, group);
       processedIds.push(fb.id);
     }
+  }
+
+  // Second-pass dedup: for each proposed new pattern, ask Claude whether it
+  // duplicates an existing pattern in the same source_type+category bucket.
+  // If yes, fold the proposal's feedback into the existing pattern's update
+  // aggregation and remove it from the insert list. This prevents near-
+  // duplicate rows like "Customer mentions Q4 budget" vs "Q4 budget cycle
+  // mentioned by customer" from accumulating over time.
+  for (const [key, group] of Array.from(newGroups.entries())) {
+    let matchedId: string | null = null;
+    try {
+      matchedId = await findDuplicateOfProposal(
+        group.proposal,
+        allExistingPatterns
+      );
+    } catch {
+      // Dedup is a best-effort pass; on error, leave the proposal as-is and
+      // the insert loop will create a new row.
+      continue;
+    }
+
+    if (!matchedId) continue;
+
+    const agg = existingUpdates.get(matchedId) ?? {
+      confirmations: 0,
+      dismissals: 0,
+      contributing_pms: new Set<string>(),
+    };
+    agg.confirmations += group.confirmed_pms.length;
+    agg.dismissals += group.dismissed_pms.length;
+    for (const pm of group.confirmed_pms) agg.contributing_pms.add(pm);
+    for (const pm of group.dismissed_pms) agg.contributing_pms.add(pm);
+    existingUpdates.set(matchedId, agg);
+
+    newGroups.delete(key);
   }
 
   // Update existing patterns.

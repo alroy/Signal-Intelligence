@@ -92,8 +92,9 @@ Because the plugin scored the signal without shared-pattern context, the number 
 1. Fetches `pm_feedback` rows where `pattern_extracted_at IS NULL` (oldest 30 first), joined with their match context (source, speaker role, category, summary, explanation).
 2. Loads the 100 most-recently-updated `shared_patterns` rows to give Claude a reference list.
 3. Sends one batched call to Claude Sonnet 4.6. Claude returns, for each feedback record: `match_existing` (bind to an existing pattern id), `create_new` (propose a pattern, reusing the exact same description when multiple records in the batch share a theme), or `skip` (idiosyncratic).
-4. Aggregates the decisions: increments `confirmations`/`dismissals` on matched patterns, merges the PM into `contributing_pm_ids`, and inserts new pattern rows with seeded counts.
-5. Marks every decided feedback row as `pattern_extracted_at = now()` so it is not reprocessed.
+4. Runs a second-pass dedup. For each proposed new pattern, Claude is asked whether it duplicates any existing pattern in the same `source_type` + `category` bucket. Duplicates are folded into the existing pattern's count so paraphrases never create near-duplicate rows.
+5. Aggregates the decisions: increments `confirmations`/`dismissals` on matched patterns, merges the PM into `contributing_pm_ids`, and inserts the remaining new pattern rows with seeded counts.
+6. Marks every decided feedback row as `pattern_extracted_at = now()` so it is not reprocessed.
 
 ### 7. Objective status changes
 
