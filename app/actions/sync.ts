@@ -13,6 +13,7 @@ import {
   isNewObjectiveMarker,
 } from "@/lib/sync-monday";
 import { rescoreNewMatches } from "@/lib/rescore";
+import { extractPatternsFromFeedback } from "@/lib/extract-patterns";
 
 export async function triggerMondaySync() {
   const supabase = await createClient();
@@ -127,6 +128,9 @@ export async function triggerMondaySync() {
 
   // Re-score synced matches
   await rescoreNewMatches();
+
+  // Aggregate recent PM feedback into shared_patterns
+  await extractPatternsFromFeedback();
 
   revalidatePath("/dashboard");
   revalidatePath("/objectives/[id]", "page");

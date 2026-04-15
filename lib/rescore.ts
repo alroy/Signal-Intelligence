@@ -187,16 +187,23 @@ export async function rescoreNewMatches(): Promise<{ rescored: number }> {
     (objectives ?? []).map((o) => [o.id, o as Objective])
   );
 
-  // Fetch shared patterns
+  // Fetch shared patterns. Only patterns with enough evidence (>= 3 feedback
+  // records) are allowed to influence scoring, so a single PM's one-off
+  // confirm or dismiss does not distort the team-wide signal.
+  const MIN_PATTERN_EVIDENCE = 3;
   const { data: patterns } = await supabase
     .from("shared_patterns")
-    .select("pattern_description, confidence")
+    .select("pattern_description, confidence, confirmations, dismissals")
     .or("confidence.gt.0.7,confidence.lt.0.3");
 
-  const highPatterns = (patterns ?? []).filter(
+  const evidencedPatterns = (patterns ?? []).filter(
+    (p) => (p.confirmations ?? 0) + (p.dismissals ?? 0) >= MIN_PATTERN_EVIDENCE
+  );
+
+  const highPatterns = evidencedPatterns.filter(
     (p) => p.confidence > 0.7
   ) as SharedPattern[];
-  const lowPatterns = (patterns ?? []).filter(
+  const lowPatterns = evidencedPatterns.filter(
     (p) => p.confidence < 0.3
   ) as SharedPattern[];
 

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchPendingSignals, updateSignalStatus, type MondayItem } from "@/lib/monday";
 import { rescoreNewMatches } from "@/lib/rescore";
+import { extractPatternsFromFeedback } from "@/lib/extract-patterns";
 
 // Monday.com column IDs from the Signal Intelligence board (board 18407235431)
 export const MONDAY_COLUMNS = {
@@ -118,7 +119,16 @@ function parseDecomposition(text: string): Record<string, unknown> | null {
 }
 
 export async function syncMondaySignals(): Promise<
-  { success: true; synced: number; clusters_created: number; objectives_updated: number; rescored: number } | { error: string }
+  {
+    success: true;
+    synced: number;
+    clusters_created: number;
+    objectives_updated: number;
+    rescored: number;
+    patterns_extracted: number;
+    patterns_created: number;
+    patterns_updated: number;
+  } | { error: string }
 > {
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!boardId) {
@@ -128,7 +138,16 @@ export async function syncMondaySignals(): Promise<
   const items = await fetchPendingSignals(boardId);
 
   if (items.length === 0) {
-    return { success: true, synced: 0, clusters_created: 0, objectives_updated: 0, rescored: 0 };
+    return {
+      success: true,
+      synced: 0,
+      clusters_created: 0,
+      objectives_updated: 0,
+      rescored: 0,
+      patterns_extracted: 0,
+      patterns_created: 0,
+      patterns_updated: 0,
+    };
   }
 
   const supabase = createAdminClient();
@@ -172,7 +191,19 @@ export async function syncMondaySignals(): Promise<
   }
 
   if (signalItems.length === 0) {
-    return { success: true, synced: 0, clusters_created: 0, objectives_updated: objectivesUpdated, rescored: 0 };
+    // No signals to sync, but still run pattern extraction — feedback from
+    // prior runs may be waiting to be turned into shared patterns.
+    const patternStats = await extractPatternsFromFeedback();
+    return {
+      success: true,
+      synced: 0,
+      clusters_created: 0,
+      objectives_updated: objectivesUpdated,
+      rescored: 0,
+      patterns_extracted: patternStats.processed,
+      patterns_created: patternStats.new_patterns,
+      patterns_updated: patternStats.existing_updated,
+    };
   }
 
   // Group signal items by cluster
@@ -232,5 +263,18 @@ export async function syncMondaySignals(): Promise<
   // Re-score synced matches using shared patterns + PM feedback history
   const { rescored } = await rescoreNewMatches();
 
-  return { success: true, synced: data.length, clusters_created: clusterIdMap.size, objectives_updated: objectivesUpdated, rescored };
+  // Aggregate recent PM feedback into shared_patterns so the next sync's
+  // rescore benefits from every PM's activity.
+  const patternStats = await extractPatternsFromFeedback();
+
+  return {
+    success: true,
+    synced: data.length,
+    clusters_created: clusterIdMap.size,
+    objectives_updated: objectivesUpdated,
+    rescored,
+    patterns_extracted: patternStats.processed,
+    patterns_created: patternStats.new_patterns,
+    patterns_updated: patternStats.existing_updated,
+  };
 }
