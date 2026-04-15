@@ -8,49 +8,10 @@ This README focuses on **how data flows through the system** and **the network e
 
 ## Architecture
 
-### End-to-end data flow
+### End-to-end data flow including Learning loop (the network effect)
 
-```
-Data Sources (Slack, Salesforce, Gong, Gmail)
-        │
-        ▼
-  Cowork Plugin  ──▶  Monday.com Board (18407235431, shared across all PMs)
-                              │
-                              ▼
-                     Sync Cron (lib/sync-monday.ts)
-                              │
-                              ▼
-                        Supabase DB  ◀──  Rescore            (lib/rescore.ts)
-                              │           Pattern Extraction (lib/extract-patterns.ts)
-                              ▼
-                         Next.js Web App (Vercel)
-                         (Review & Feedback ──▶ syncs status back to Monday)
-```
+<img width="2752" height="1536" alt="Blueprint" src="https://github.com/user-attachments/assets/ae1b4623-b251-4f1a-b31b-b1688eb3f941" />
 
-### Learning loop (the network effect)
-
-```
-    [PMs review signals in the web app]
-                 │
-                 ▼
-           pm_feedback ─────▶ Pattern Extraction
-         (per-PM rows)       (lib/extract-patterns.ts)
-                                      │
-                                      ▼
-                               shared_patterns
-                             (team-wide, ≥3 evidence
-                              to influence scoring)
-                                      │
-                                      ▼
-                                   Rescore
-                            (lib/rescore.ts, applies
-                             +1-2 / −2-3 score adjustments)
-                                      │
-                                      ▼
-                         Signals appear in the web app
-                         with team-calibrated scores
-                         (loop repeats on every sync)
-```
 
 Two key constraints shape the design:
 
