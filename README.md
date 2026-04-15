@@ -8,6 +8,8 @@ This README focuses on **how data flows through the system** and **the network e
 
 ## Architecture
 
+### End-to-end data flow
+
 ```
 Data Sources (Slack, Salesforce, Gong, Gmail)
         │
@@ -18,17 +20,54 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
                      Sync Cron (lib/sync-monday.ts)
                               │
                               ▼
-                        Supabase DB  ◀──  Rescore Pipeline (lib/rescore.ts)
-                              │
+                        Supabase DB  ◀──  Rescore            (lib/rescore.ts)
+                              │           Pattern Extraction (lib/extract-patterns.ts)
                               ▼
                          Next.js Web App (Vercel)
                          (Review & Feedback ──▶ syncs status back to Monday)
+```
+
+### Learning loop (the network effect)
+
+```
+    [PMs review signals in the web app]
+                 │
+                 ▼
+           pm_feedback ─────▶ Pattern Extraction
+         (per-PM rows)       (lib/extract-patterns.ts)
+                                      │
+                                      ▼
+                               shared_patterns
+                             (team-wide, ≥3 evidence
+                              to influence scoring)
+                                      │
+                                      ▼
+                                   Rescore
+                            (lib/rescore.ts, applies
+                             +1-2 / −2-3 score adjustments)
+                                      │
+                                      ▼
+                         Signals appear in the web app
+                         with team-calibrated scores
+                         (loop repeats on every sync)
 ```
 
 Two key constraints shape the design:
 
 - **The plugin can only write to Monday.** Claude (the Cowork plugin) has no direct access to Supabase. Monday is the handoff between the plugin's write path and the app's read path.
 - **The Monday board is shared.** One board holds signals for every PM, tagged by PM UUID. This shared surface is what enables the network effect described below.
+
+### Why this shape?
+
+- **Plugin writes only to Monday.** The Cowork plugin runs in Claude Desktop over MCP; it has no Supabase credentials. Monday is the asynchronous handoff, and doubles as a human-readable audit trail that PMs can spot-check.
+- **Rescore exists as a second scoring pass.** The plugin cannot read `shared_patterns` (no Supabase access). Rescore is the only place where team-wide learning can be applied before a PM sees a signal — so the plugin's initial score and the app's rescored score are allowed to diverge intentionally.
+- **Pattern extraction runs after rescore, not at feedback time.** Extraction uses LLM calls; running it on every confirm/dismiss would block the web UI. Batching on the sync cadence (every 6 hours by default) is cheap and gives Claude a wider batch to find cross-record themes in.
+- **Minimum-evidence threshold (≥3).** In [`lib/rescore.ts`](lib/rescore.ts), a pattern must have ≥3 total confirm/dismiss records AND confidence `>0.7` or `<0.3` to influence scoring. This prevents a single PM's one-off judgment from cascading across the team before it is validated.
+
+### Trust boundaries
+
+- **Per-PM data stays per-PM.** RLS on `objectives`, `matches`, `pm_feedback`, and `clusters` restricts SELECT / INSERT / UPDATE to rows where `auth.uid() = pm_id`. No PM can read another PM's raw signals, feedback records, or objectives through the web app.
+- **`shared_patterns` is the only cross-PM read surface.** RLS is `using (true)`. What the table exposes is deliberately minimal: a `pattern_description` (a generic phrase like *"Customer in Gong call mentions Q4 budget cycle"*), aggregate `confirmations`/`dismissals` counts, and a `contributing_pm_ids` list. No raw signal content, account names, or feedback explanations cross the PM boundary — only the abstracted pattern itself.
 
 ---
 
@@ -143,6 +182,12 @@ Because the board is shared, the examples and calibration draw from the whole te
 - **Account and entity overlap.** When PMs' objectives touch the same customer accounts, the plugin's cluster IDs and `account` fields already connect their signals. A Gong call the plugin surfaced for PM A can become relevant context for PM B's objective on the same account.
 - **Clustering heuristics.** More PMs means more clusters and more training signal for the clustering skill's situation-summary generation.
 - **Entity dictionaries.** Objective decompositions list entities to watch (features, competitors, personas), multilingual. As more objectives land on the board, the effective dictionary the plugin scans against grows.
+
+### When the network effect activates
+
+- **Solo PM.** Even with one PM, the loop starts working diagonally. After ~3 same-theme confirms or dismisses, extraction seeds a `shared_patterns` row whose counts cross the evidence threshold. Rescore then applies that pattern to future matches — the PM's own reviewing teaches their own scorer.
+- **Second PM joins.** Because `shared_patterns` has `using (true)` RLS, PM #2's first rescore immediately pulls PM #1's accumulated patterns. `contributing_pm_ids` is metadata only — it doesn't gate read access. Cross-PM compounding activates the moment a second PM's rescore runs against any pattern that already has evidence.
+- **The threshold that matters is not "# of PMs" — it's "# of feedback records per pattern".** Scale along either axis (more feedback from fewer PMs, or less feedback from more PMs) and the effect compounds the same way.
 
 ### Net effect
 
