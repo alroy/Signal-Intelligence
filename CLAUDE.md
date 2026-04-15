@@ -91,6 +91,7 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 2. App writes to Supabase (matches.feedback + pm_feedback table)
 3. App syncs status back to Monday (Confirmed/Dismissed)
 4. Plugin's feedback-learning skill reads these from Monday for few-shot examples and threshold calibration
+5. On every sync, `lib/extract-patterns.ts` aggregates new `pm_feedback` rows into `shared_patterns` via a batched LLM call — feeding the next rescore's team-wide scoring adjustments
 
 ## Plugin Structure
 
@@ -124,7 +125,8 @@ Data Sources (Slack, Salesforce, Gong, Gmail)
 
 ## Key Files
 - `lib/sync-monday.ts` — Monday → Supabase sync with cluster handling and decomposition routing
-- `lib/rescore.ts` — LLM re-evaluation of matches post-sync
+- `lib/rescore.ts` — LLM re-evaluation of matches post-sync (requires ≥3 feedback records for a pattern to influence scoring)
+- `lib/extract-patterns.ts` — Aggregates `pm_feedback` into `shared_patterns` after every sync
 - `lib/monday.ts` — Monday API client (fetch pending, update status)
 - `app/actions/feedback.ts` — PM feedback + sync back to Monday
 - `app/actions/objectives.ts` — Objective CRUD

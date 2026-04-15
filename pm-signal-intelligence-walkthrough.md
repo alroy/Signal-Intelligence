@@ -72,10 +72,12 @@ The plugin groups related signals (e.g., a Gong call and a Slack thread about th
 
 After Monday→Supabase sync, the app re-evaluates each new match using:
 - The objective's decomposition (signal types, entities to watch, relevant accounts)
-- Shared patterns (high-confidence patterns boost scores, low-confidence ones penalize)
+- Shared patterns (high-confidence patterns boost scores, low-confidence ones penalize). Only patterns with at least 3 feedback records influence scoring.
 - PM feedback history (5 recent confirmed + 5 recent dismissed examples)
 
 This means the scores shown in the web app may differ from the plugin's original scores on the Monday board.
+
+After rescore, a second pipeline (`lib/extract-patterns.ts`) aggregates recent `pm_feedback` records from every PM into `shared_patterns` rows. A batched LLM call groups feedback by theme and either increments an existing pattern's counts or creates a new pattern row. The next rescore picks up the fresh patterns automatically.
 
 ---
 
@@ -163,6 +165,7 @@ create table pm_feedback (
   signal_content_summary text,
   match_explanation text,
   feedback_type text not null,
+  pattern_extracted_at timestamptz,
   created_at timestamptz default now()
 );
 

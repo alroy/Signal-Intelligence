@@ -62,6 +62,7 @@ export interface PmFeedback {
   signal_content_summary: string | null;
   match_explanation: string | null;
   feedback_type: string;
+  pattern_extracted_at: string | null;
   created_at: string;
 }
 

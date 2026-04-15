@@ -62,7 +62,7 @@ Runs daily via the plugin's [`commands/collect-signals.md`](commands/collect-sig
    - Everything else → treat as a signal match.
 3. For each distinct `cluster_id`, create a row in `clusters` (if new) and map the plugin's cluster ID to a Supabase UUID.
 4. Upsert the signal items into `matches` with the resolved cluster UUID and `feedback = "pending"`.
-5. Trigger the rescore pipeline.
+5. Trigger the rescore pipeline and then the pattern-extraction pipeline.
 
 ### 4. Rescore
 
@@ -85,7 +85,18 @@ Because the plugin scored the signal without shared-pattern context, the number 
 3. The action writes a row to `pm_feedback`, updates `matches.feedback` and `matches.feedback_at`, and — if the match has a `monday_item_id` — syncs the status back to Monday so the plugin can learn from it on its next run.
 4. The plugin's [`feedback-learning`](skills/feedback-learning/) skill reads these statuses from the board for the next collection run's few-shot examples and score-threshold calibration.
 
-### 6. Objective status changes
+### 6. Pattern extraction
+
+[`lib/extract-patterns.ts`](lib/extract-patterns.ts) — turns per-PM feedback into team-wide patterns. Runs after rescore on every sync.
+
+1. Fetches `pm_feedback` rows where `pattern_extracted_at IS NULL` (oldest 30 first), joined with their match context (source, speaker role, category, summary, explanation).
+2. Loads the 100 most-recently-updated `shared_patterns` rows to give Claude a reference list.
+3. Sends one batched call to Claude Sonnet 4.6. Claude returns, for each feedback record: `match_existing` (bind to an existing pattern id), `create_new` (propose a pattern, reusing the exact same description when multiple records in the batch share a theme), or `skip` (idiosyncratic).
+4. Runs a second-pass dedup. For each proposed new pattern, Claude is asked whether it duplicates any existing pattern in the same `source_type` + `category` bucket. Duplicates are folded into the existing pattern's count so paraphrases never create near-duplicate rows.
+5. Aggregates the decisions: increments `confirmations`/`dismissals` on matched patterns, merges the PM into `contributing_pm_ids`, and inserts the remaining new pattern rows with seeded counts.
+6. Marks every decided feedback row as `pattern_extracted_at = now()` so it is not reprocessed.
+
+### 7. Objective status changes
 
 1. PM pauses or resolves an objective in the web app. The app updates Supabase and writes an `objective_status_change` marker to Monday.
 2. The plugin's daily run discovers the marker, updates its local project memory, and flips the marker to `Enriched`.
@@ -105,12 +116,18 @@ The shared components of the stack — the Monday board, the `shared_patterns` t
 
 ### How it improves scoring for everyone
 
-The rescore pipeline pulls shared patterns on every run ([`lib/rescore.ts:190-201`](lib/rescore.ts)) and injects them into the Claude prompt ([`lib/rescore.ts:75-86`](lib/rescore.ts)):
+The loop has two halves: **extraction** writes team-wide patterns; **rescore** applies them.
 
-- Patterns with **>70% team-wide confirmation** are tagged as high-confidence and add **+1-2 points** to matching signals ([`lib/rescore.ts:123`](lib/rescore.ts)).
-- Patterns with **>70% team-wide dismissal** are tagged as low-value and subtract **-2-3 points** from matching signals ([`lib/rescore.ts:124`](lib/rescore.ts)).
+**Extraction** ([`lib/extract-patterns.ts`](lib/extract-patterns.ts)) runs after every sync. It batches recent `pm_feedback` records from every PM and asks Claude to group them into reusable patterns. A pattern that PMs A, B, and C each dismissed three times becomes a `shared_patterns` row with 9 dismissals and a 0.0 confidence score.
 
-Every time a PM confirms or dismisses a signal, that judgment feeds back into the team-wide confidence score of the pattern it matches. So a noisy signal category that PM A has dismissed fifteen times will automatically score lower for PM B the first time it appears — PM B never has to train it out themselves.
+**Rescore** ([`lib/rescore.ts`](lib/rescore.ts)) pulls patterns with at least 3 total feedback records and a `confidence > 0.7` or `< 0.3`, then injects them into the Claude prompt:
+
+- Patterns with **>70% team-wide confirmation** are tagged as high-confidence and add **+1-2 points** to matching signals.
+- Patterns with **>70% team-wide dismissal** are tagged as low-value and subtract **-2-3 points** from matching signals.
+
+The minimum-evidence threshold (≥3 records) stops a single PM's one-off judgment from distorting scores for everyone. Once a pattern has enough support, it starts shifting scores on every future match across the team.
+
+Concretely: a noisy signal category that PMs A, B, and C have collectively dismissed fifteen times will automatically score lower for PM D the first time it appears — PM D never has to train it out themselves.
 
 ### How it improves matching on the plugin side
 
@@ -129,7 +146,7 @@ Because the board is shared, the examples and calibration draw from the whole te
 
 ### Net effect
 
-- **PM #1** ships with generic scoring, no shared patterns, and a cold feedback history.
+- **PM #1** ships with generic scoring, an empty `shared_patterns` table, and a cold feedback history. The extraction pipeline starts forming patterns as soon as they confirm or dismiss a few signals, but nothing team-wide exists yet.
 - **PM #10** inherits a `shared_patterns` table calibrated by nine other PMs' confirm/dismiss activity, an entity dictionary that already covers the accounts and features the team cares about, and a plugin that has seen thousands of real examples of what "relevant" and "not relevant" look like in this org.
 
 The product is useful on day one for a single PM. It gets meaningfully better — measurable in score precision and review-queue noise reduction — with each additional PM who starts reviewing signals.
@@ -139,8 +156,9 @@ The product is useful on day one for a single PM. It gets meaningfully better �
 ## Key files
 
 ### Web app
-- [`lib/sync-monday.ts`](lib/sync-monday.ts) — Monday → Supabase sync: pending fetch, decomposition routing, cluster creation, match upsert.
-- [`lib/rescore.ts`](lib/rescore.ts) — LLM rescore with shared patterns and per-PM feedback examples.
+- [`lib/sync-monday.ts`](lib/sync-monday.ts) — Monday → Supabase sync: pending fetch, decomposition routing, cluster creation, match upsert. Triggers rescore + pattern extraction.
+- [`lib/rescore.ts`](lib/rescore.ts) — LLM rescore with shared patterns (≥3 evidence) and per-PM feedback examples.
+- [`lib/extract-patterns.ts`](lib/extract-patterns.ts) — Batched LLM pipeline that aggregates `pm_feedback` into `shared_patterns` rows.
 - [`lib/monday.ts`](lib/monday.ts) — Monday GraphQL client: fetch pending items, update status.
 - [`app/actions/feedback.ts`](app/actions/feedback.ts) — Confirm/dismiss handler; writes to Supabase and syncs status back to Monday.
 - [`app/actions/objectives.ts`](app/actions/objectives.ts) — Objective CRUD; emits `new_objective` and `objective_status_change` markers to Monday.
