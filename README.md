@@ -4,8 +4,6 @@ A B2G product intelligence system. It monitors Slack, Salesforce, Gong, and Gmai
 
 This README focuses on **how data flows through the system** and **the network effect** — what gets better for every PM as more PMs join. For setup, see [`pm-signal-intelligence-walkthrough.md`](pm-signal-intelligence-walkthrough.md). For Claude-plugin context, see [`CLAUDE.md`](CLAUDE.md).
 
----
-
 ## Architecture
 
 ### End-to-end data flow including Learning loop (the network effect)
@@ -29,8 +27,6 @@ Two key constraints shape the design:
 
 - **Per-PM data stays per-PM.** RLS on `objectives`, `matches`, `pm_feedback`, and `clusters` restricts SELECT / INSERT / UPDATE to rows where `auth.uid() = pm_id`. No PM can read another PM's raw signals, feedback records, or objectives through the web app.
 - **`shared_patterns` is the only cross-PM read surface.** RLS is `using (true)`. What the table exposes is deliberately minimal: a `pattern_description` (a generic phrase like *"Customer in Gong call mentions Q4 budget cycle"*), aggregate `confirmations`/`dismissals` counts, and a `contributing_pm_ids` list. No raw signal content, account names, or feedback explanations cross the PM boundary — only the abstracted pattern itself.
-
----
 
 ## Data flow
 
@@ -102,8 +98,6 @@ Because the plugin scored the signal without shared-pattern context, the number 
 2. The plugin's daily run discovers the marker, updates its local project memory, and flips the marker to `Enriched`.
 3. Paused and resolved objectives are excluded from subsequent signal collection until reactivated.
 
----
-
 ## Network effect — why the system gets sharper as more PMs join
 
 The shared components of the stack — the Monday board, the `shared_patterns` table, the `pm_feedback` history, and the rescore pipeline — mean that every PM's review activity produces value for every other PM, not just for themselves.
@@ -157,8 +151,6 @@ Because the board is shared, the examples and calibration draw from the whole te
 
 The product is useful on day one for a single PM. It gets meaningfully better — measurable in score precision and review-queue noise reduction — with each additional PM who starts reviewing signals.
 
----
-
 ## Key files
 
 ### Web app
@@ -185,8 +177,6 @@ The product is useful on day one for a single PM. It gets meaningfully better �
 - [`pm-signal-intelligence-walkthrough.md`](pm-signal-intelligence-walkthrough.md) — End-to-end setup guide (Supabase, OAuth, Claude Desktop, Cowork plugin, Monday board, cron).
 - [`docs/getting-started.md`](docs/getting-started.md) — Shorter onboarding notes.
 
----
-
 ## Tech stack
 
 - **Web app:** Next.js (App Router), TypeScript, Tailwind CSS, deployed on Vercel.
@@ -194,8 +184,6 @@ The product is useful on day one for a single PM. It gets meaningfully better �
 - **Ingestion surface:** Monday.com board via MCP.
 - **LLM:** Claude Sonnet 4.6 (rescore pipeline).
 - **Plugin:** Cowork plugin with skills and commands in markdown.
-
----
 
 ## Supabase tables
 
