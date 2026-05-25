@@ -1,8 +1,30 @@
 # PM Signal Intelligence
 
-A B2G product intelligence system. It monitors Slack, Salesforce, Gong, and Gmail for signals relevant to PM-defined strategic objectives, scores them, clusters related signals into situations, and presents a daily review queue. PMs confirm or dismiss each signal, and that feedback compounds across the team so the system gets sharper the more PMs use it.
+PM Signal Intelligence is a product intelligence system for B2G product teams. It helps PMs monitor fragmented company data sources - Slack, Salesforce, Gong, and Gmail - and turn scattered customer, sales, and internal signals into a structured daily review queue.
 
-This README focuses on **how data flows through the system** and **the network effect** — what gets better for every PM as more PMs join. For setup, see [`pm-signal-intelligence-walkthrough.md`](pm-signal-intelligence-walkthrough.md). For Claude-plugin context, see [`CLAUDE.md`](CLAUDE.md).
+The system is built around PM-defined strategic objectives. Each signal is scored, clustered into a broader situation, and presented for review. PM feedback then improves future scoring through a shared learning loop, so the system gets sharper as more PMs use it.
+
+## Why I built it
+
+Product managers often rely on scattered, high-friction sources to understand what matters: sales calls, Slack threads, customer requests, account notes, and internal updates. Important signals are easy to miss, hard to connect, and rarely tied back to a PM’s current strategic priorities.
+
+This project explores what a product intelligence layer could look like: objective-driven signal collection, LLM-based scoring, clustering, feedback loops, and privacy boundaries that allow team-wide learning without exposing every PM’s raw data.
+
+## What it does
+
+- Lets PMs define strategic objectives in natural language.
+- Decomposes each objective into structured signal criteria.
+- Collects and normalizes signals from Slack, Salesforce, Gong, and Gmail.
+- Scores each signal for relevance, category, and urgency.
+- Clusters related signals into “situations” by account and theme.
+- Presents a daily review queue where PMs confirm or dismiss signals.
+- Uses PM feedback to improve future scoring across the team.
+
+## Why it matters
+
+This is not just a notification feed. The core product idea is a compounding learning loop: every confirmed or dismissed signal becomes training evidence for future ranking and pattern detection. Over time, the system reduces review noise and helps PMs notice important product opportunities, risks, and customer patterns earlier.
+
+For setup, see [pm-signal-intelligence-walkthrough.md](pm-signal-intelligence-walkthrough.md). For Claude-plugin context, see [CLAUDE.md](CLAUDE.md).
 
 ## Architecture
 
@@ -51,7 +73,7 @@ Runs daily via the plugin's [`commands/collect-signals.md`](commands/collect-sig
 
 [`lib/sync-monday.ts`](lib/sync-monday.ts), driven by a cron on Vercel:
 
-1. Fetches all items on board `18407235431` with `Status = "Pending"` via [`lib/monday.ts`](lib/monday.ts).
+1. Fetches all items on the Monday board with `Status = "Pending"` via [`lib/monday.ts`](lib/monday.ts).
 2. Routes by `Source` field:
    - `objective_decomposition` → update the corresponding row in `objectives`.
    - `new_objective` / `objective_status_change` → skip (these are plugin-discovery markers, not signals).
