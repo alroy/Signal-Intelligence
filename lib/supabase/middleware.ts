@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isEmailAllowed } from "@/lib/auth/allowlist";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -38,6 +39,23 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+
+  // Defense-in-depth: a user can authenticate with Google yet not be permitted
+  // to use the app (the OAuth app is no longer restricted to the zencity.io
+  // Workspace). Clear any such session and send them back to login. Clearing
+  // the cookies is what prevents a redirect loop on /login.
+  if (user && !isEmailAllowed(user.email)) {
+    await supabase.auth.signOut({ scope: "local" });
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("error", "unauthorized");
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
 
   // Redirect unauthenticated users to login (except for login, auth, and API routes)
   if (

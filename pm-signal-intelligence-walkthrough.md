@@ -250,10 +250,19 @@ Needed for the web app's login. Easier to do now while you're here.
 1. Create a project if you don't have one. Name: "PM Signal Intelligence."
 2. Go to "APIs & Services" > "Credentials."
 3. If prompted, configure the OAuth consent screen:
-   - Choose "Internal" (restricts to your Google Workspace org).
+   - Choose "Internal" to restrict sign-in to your Google Workspace org, or
+     "External" if you also need to grant access to accounts outside the org
+     (e.g. a personal Gmail test user). With "External / Testing," add each
+     such account under "Test users."
    - App name: "PM Signal Intelligence."
    - Add your org domain as authorized.
    - Save.
+
+   Note: when the consent screen is "External," Google no longer guarantees
+   that only org accounts can authenticate. The app enforces its own allowlist
+   in `lib/auth/allowlist.ts` (the zencity.io domain plus any explicitly
+   allow-listed addresses). Extend it via the `AUTH_ALLOWED_DOMAINS` and
+   `AUTH_ALLOWED_EMAILS` environment variables — see `.env.local.example`.
 4. Click "Create Credentials" > "OAuth client ID."
 5. Type: "Web application." Name: "PM Signal Intelligence."
 6. Under "Authorized redirect URIs," add:

@@ -1,7 +1,20 @@
 import Image from "next/image";
 import { LoginButton } from "@/components/login-button";
 
-export default function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  unauthorized:
+    "This account isn't authorized to access Signal Intelligence. Please sign in with your Zencity account.",
+  auth_failed: "Sign-in failed. Please try again.",
+};
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-50">
       {/* Signal grid background */}
@@ -30,6 +43,12 @@ export default function LoginPage() {
             Monitor signals that matter for your objectives
           </p>
         </div>
+
+        {errorMessage && (
+          <div className="mt-8 rounded-lg border border-red-200/70 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         <div className="mt-10 flex justify-center">
           <LoginButton />
